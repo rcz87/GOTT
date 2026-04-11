@@ -5,3 +5,12 @@ typechain-types/
 .env
 coverage/
 coverage.json
+
+# Foundry
+out/
+cache_forge/
+broadcast/
+lib/
+
+# Local backups / untracked
+*.local-backup
