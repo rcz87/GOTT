@@ -181,4 +181,24 @@ describe("GuardiansToken (GOTT)", function () {
       expect(await token.getVotes(owner.address)).to.equal(ethers.parseEther("1000000"));
     });
   });
+
+  // ==================== ERC20Permit / AccessControl overrides ====================
+  describe("Required Overrides", function () {
+    it("Should return initial nonce 0 for any address", async function () {
+      const { token, user1 } = await loadFixture(deployFixture);
+      expect(await token.nonces(user1.address)).to.equal(0);
+    });
+
+    it("Should support AccessControl interface via supportsInterface", async function () {
+      const { token } = await loadFixture(deployFixture);
+      // IAccessControl interface id
+      const IACCESS_CONTROL_ID = "0x7965db0b";
+      expect(await token.supportsInterface(IACCESS_CONTROL_ID)).to.equal(true);
+      // IERC165 interface id
+      const IERC165_ID = "0x01ffc9a7";
+      expect(await token.supportsInterface(IERC165_ID)).to.equal(true);
+      // Random id should be false
+      expect(await token.supportsInterface("0xdeadbeef")).to.equal(false);
+    });
+  });
 });
