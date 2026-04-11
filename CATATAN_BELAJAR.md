@@ -305,18 +305,211 @@ ERC20Votes bikin transfer **~88% lebih mahal** dari plain ERC20 (~52k gas). Ini 
 
 ---
 
-## 🔑 Insight Utama yang Dipelajari
+## 🔑 Tahap 5 — Permit / Gasless Approval (EIP-2612)
 
-1. **Custom errors > string require** — gas-efficient, bisa carry parameter aktual untuk debugging
-2. **Voting power opt-in, bukan default** — holder harus delegate dulu; gotcha governance yang perlu edukasi user
-3. **Snapshot immutability** — `getPastVotes` ngunci voting power ke block tertentu, fondasi anti flash-loan vote attack
-4. **Mint = Transfer dari 0x0, Burn = Transfer ke 0x0** — konvensi ERC20, bukan event terpisah
-5. **`indexed` parameter + Bloom filter** — bikin event query fast
-6. **EIP-2929 warm/cold per-TX, bukan antar-TX** — jangan expect "warm discount" dari TX sebelumnya
-7. **SSTORE pricing** — zero→non-zero 20k, non-zero→non-zero 5k; alokasi slot baru mahal
-8. **ERC20Votes ~88% more expensive** — checkpoint write overhead, trade-off untuk on-chain governance
-9. **BSC deploy cost ~$5** — sweet spot untuk retail vs Ethereum L1 ($155)
-10. **Time travel test yang butuh bulan, jadi detik** — `evm_increaseTime` + `evm_mine` untuk vesting/timelock/staking test
+### Konsep
+User sign pesan off-chain (EIP-712 structured data), siapa pun bisa submit signature itu untuk aktifkan allowance. User tidak perlu BNB/gas untuk approve. GOTT inherit `ERC20Permit`.
+
+### Alur
+1. **Build EIP-712 domain + message** — domain berisi `name`, `version`, `chainId`, `verifyingContract`
+2. **Owner sign** dengan `signer.signTypedData(domain, types, message)` — **0 gas, no TX**
+3. **Spender submit** signature via `token.permit(owner, spender, value, deadline, v, r, s)` — **yang submit bayar gas, bukan owner**
+4. **Spender pakai allowance** dengan `transferFrom()`
+
+### Eksperimen
+
+**5.1 — Build signature:**
+```javascript
+const domain = { name: "Guardians Token", version: "1", chainId: 31337, verifyingContract: addr };
+const types = { Permit: [
+  {name:"owner",type:"address"}, {name:"spender",type:"address"},
+  {name:"value",type:"uint256"}, {name:"nonce",type:"uint256"},
+  {name:"deadline",type:"uint256"}
+]};
+const message = { owner: alice.address, spender: bob.address, value, nonce, deadline };
+const signature = await alice.signTypedData(domain, types, message);
+// → 0x...130 char hex
+```
+
+Signature dipecah jadi r/s/v via `ethers.Signature.from(signature)`.
+
+**5.2 — Submit by Bob:**
+- `gasUsed: 74,815`
+- `from: 0x3C44Cd...` (**Bob**, BUKAN Alice!)
+- Allowance Alice→Bob = 1000 GOTT
+
+**5.3 — Replay attack (gagal total):**
+Submit signature yang sama lagi → error:
+```
+ERC2612InvalidSigner(recovered, expectedAlice)
+```
+Karena nonce sudah increment (0 → 1), hash yang di-recompute di contract berbeda dari hash yang Alice tanda tangan, jadi ECDSA recover balik address acak, dan nggak match Alice. Clean anti-replay via counter.
+
+### Gotcha Time Travel
+`Date.now()` = real time server, tapi blockchain clock bisa di posisi lain setelah time travel. Pakai `latestBlock.timestamp + 3600` buat deadline, jangan `Date.now() + 3600`. Error-nya: `ERC2612ExpiredSignature(timestamp)`.
+
+### Perbandingan Flow
+
+| | Classic Approve | Permit Flow |
+|---|---|---|
+| Alice bayar gas | ~46k ($0.08) | **0** |
+| Alice butuh BNB | Ya | Tidak |
+| Alice TX | 1 (approve) | 0 (cuma sign) |
+| Bob bayar gas | 82k (transferFrom) | 75k (permit) + 82k (transferFrom) = 157k |
+| Total gas | ~128k | ~157k (**29k lebih mahal**) |
+| UX | 2 klik wallet | 1 klik (sign saja) |
+
+**Trade-off:** 29k gas extra untuk UX 10x mulus + alice nggak butuh BNB sama sekali. Pilihan standar DeFi modern (Uniswap permit2, 1inch, Aave, DAI).
+
+---
+
+## 🌐 Tahap 6 — Fork BSC Mainnet
+
+### Konsep
+Hardhat bisa **clone state live chain** ke chain lokal. Baca = passthrough ke RPC mainnet, tulis = ke memory lokal. Kamu punya copy mainnet yang bisa edit bebas.
+
+**Use case:** pre-launch testing, exploit reproduction, integration test, migration dry-run.
+
+### Setup Fix Panjang
+
+**Masalah RPC:**
+- ❌ `bsc-dataseed.binance.org` — blocked dari server (DNS/IP)
+- ❌ `binance.llamarpc.com` — DNS fail
+- ❌ `bsc.publicnode.com` — responsif tapi **bukan archive**, nolak historical state
+- ✅ `bsc.drpc.org` — **archive + responsif** — pemenang
+
+**Masalah EDR Hardfork:** Hardhat 2.22+ pakai EDR engine rust, nolak execute di chain 56 dengan error "No known hardfork for execution on historical block". Fix config:
+
+```javascript
+// hardhat.config.js
+hardhat: {
+  chainId: 31337,
+  forking: process.env.FORK === "true" ? {
+    url: process.env.BSC_RPC || "https://bsc-dataseed.binance.org",
+    blockNumber: process.env.FORK_BLOCK ? parseInt(process.env.FORK_BLOCK) : undefined,
+  } : undefined,
+  hardfork: "shanghai",
+  chains: {
+    56: {
+      hardforkHistory: {
+        byzantium: 0, constantinople: 0, petersburg: 0, istanbul: 0,
+        muirGlacier: 0, berlin: 0, london: 0, arrowGlacier: 0,
+        grayGlacier: 0, merge: 0, shanghai: 0,
+      },
+    },
+  },
+}
+```
+
+**Workaround runtime:** Mesti `evm_mine` 1 block lokal dulu sebelum call contract mainnet — else EDR tetap nolak karena treat fork block sebagai "historical".
+
+**Activate fork:**
+```bash
+FORK=true BSC_RPC=https://bsc.drpc.org npx hardhat console
+```
+Lalu di console: `await network.provider.send("evm_mine")` sebelum call pertama.
+
+### Eksperimen
+
+**6.1 — Bukti Live Mainnet State:**
+- Block number: 91,878,017 (BSC mainnet real-time)
+- WBNB total supply: **1,769,110.36** WBNB
+- USDT total supply: **8,984,992,663** USDT (~$9B)
+- CAKE total supply: 3,968,010,755 (cumulative)
+
+**6.2 — Impersonate Binance Hot Wallet:**
+Address: `0x8894E0a0c962CB723c1976a4421c95949bE2D4E3`
+Balance: **92,874 BNB** (~$55.7M — cocok dengan Nansen)
+
+```javascript
+await network.provider.request({ method: "hardhat_impersonateAccount", params: [binanceHot] });
+const binanceSigner = await ethers.getSigner(binanceHot);
+await binanceSigner.sendTransaction({ to: me.address, value: ethers.parseEther("100") });
+```
+
+**Signed TX "sebagai Binance" tanpa private key.** Nonce TX asli: **50,987,489** — bukti sinkron ke real chain. Signature `r` dan `s` dipalsukan EDR dengan address hex (skip ECDSA verify). Cuma work di fork.
+
+**6.3 — Deploy GOTT di Forked BSC:**
+Address: `0x7c8dd29eF968FFFc20f9459B3a9f86FA12b02EDa` (beda dari local biasa karena deployer `0xf39Fd6...` punya nonce **19,932** di BSC mainnet — address itu shared key default Hardhat yang dipakai developer di seluruh dunia).
+
+**6.4 — Query PancakeSwap Pool WBNB-USDT:**
+Pool: `0x16b9a82891338f9bA80E2D6970FddA79D1eb0daE`
+```
+reserve USDT: 17,188,448.7
+reserve WBNB:    28,404.47
+price BNB = reserveUSDT / reserveWBNB = $605.13
+```
+Match persis dengan Nansen TVL ($34.4M) dan harga market.
+
+**6.5 — Create Pool GOTT/WBNB di Real PancakeSwap:**
+1. `gott.toggleMaxWallet(false)` — disable anti-whale untuk test
+2. `gott.approve(router, MaxUint256)` — infinite allowance
+3. `router.addLiquidityETH(gott, 10M, 0, 0, me, dl, {value: 100 BNB})` — gas: **3,478,329** (~$6.31 di mainnet)
+4. Pair address: `0xd8a77a0E13F6B4C9166E11FF9610b453e2D84AdF`
+5. Initial reserves: 10,000,000 GOTT + 100 BNB
+6. Initial price: 0.00001 BNB/GOTT = **$0.00605** per GOTT
+7. FDV (400M circulating): **$2.42M**
+
+**6.6 — Retail Swap (1 BNB buy):**
+```
+Input:   1 BNB ($605)
+Output:  98,764.82 GOTT
+Slippage: ~1.25% (fee 0.25% + price impact ~1%)
+Gas:     165,148
+```
+
+**6.7 — Whale Dump 1000 BNB (AMM Math Horror):**
+
+Quote sebelum swap:
+```
+1000 BNB → 8,990,880 GOTT  (rate: 8,990 GOTT/BNB)
+```
+
+Bandingkan dengan retail rate 98,764 GOTT/BNB — **whale bayar 11x lebih mahal per GOTT**! Formula constant product:
+```
+x × y = k = 10M × 100 = 1,000,000,000
+Fee-adjusted input: 1000 × 0.9975 = 997.5 BNB
+New BNB reserve: 1097.5
+New GOTT reserve: 1,000,000,000 / 1097.5 = 911,162
+Whale receives: 10,000,000 - 911,162 ≈ 9,088,838 (~9M GOTT)
+```
+
+**State pool post-dump:**
+
+| | Sebelum | Sesudah | Δ |
+|---|---|---|---|
+| GOTT reserve | 10,000,000 | 910,354 | **−91%** |
+| WBNB reserve | 100 | 1,101 | **+1001%** |
+| Price BNB/GOTT | 0.00001 | 0.001209 | **+120x** |
+| Price USD | $0.00605 | $0.731 | **+120x** |
+
+**Post-whale quote untuk retail baru:**
+```
+1 BNB → 824 GOTT  (vs 98,764 sebelum whale)
+```
+Retail #2 FOMO di harga pucuk → dapat 0.83% dari retail #1. **"Bought the top"**.
+
+### Pelajaran untuk Real Launch GOTT
+
+1. **Liquidity awal wajib dalam** — minimal $500k-$1M per side supaya whale 1000 BNB cuma geser harga ~5%, bukan 120x
+2. **Biarkan anti-whale max wallet 2% aktif** — blokade natural whale pump (kami disable untuk test doang)
+3. **Lock LP token** — pakai Unicrypt/Team.Finance, minimal 6-12 bulan, biar dev nggak bisa rug
+4. **Vesting team tokens** — cliff 3-6 bulan, linear 12-24 bulan
+5. **Launch dengan max-buy limit** beberapa menit pertama (pakai contract helper)
+6. **Edukasi retail** — "jangan FOMO di menit pertama"
+
+### Insight Baru Tahap 5-6
+
+11. **Permit bukan gratis, cuma shift gas ke spender** — total gas sedikit lebih mahal, tapi UX jauh mulus
+12. **Signature replay protection = 1 nonce counter** — sederhana, murah, efektif
+13. **Fork = copy mainnet bisa-edit** — mindset ini membuka test scenario yang nggak mungkin di testnet
+14. **Impersonate account = testing superpower** — simulate whale, multisig, contract interaction tanpa private key
+15. **RPC provider matters untuk fork** — public RPC biasa bukan archive, butuh yang serve historical state (drpc.org)
+16. **EDR hardfork issue → workaround evm_mine** — lesson: kadang solusi Hardhat issues adalah satu call kecil sebelum operasi besar
+17. **Constant product AMM brutal untuk trade besar vs pool kecil** — 91% price impact dari 1000 BNB ke pool 100 BNB
+18. **Default Hardhat signer `0xf39Fd6...` punya nonce real di mainnet** — public key dari mnemonic default, ribuan dev pernah pakai
+19. **Pair address deterministik** — dihitung dari CREATE2(factory, salt=keccak(token0+token1)), sama di semua fork
+20. **Price impact naik eksponensial** — 1 BNB → 1% impact, 10 BNB → 10% impact, 100 BNB → 50% impact, 1000 BNB → 90%+ impact
 
 ---
 
@@ -364,13 +557,68 @@ receipt.gasUsed.toString();
 
 ---
 
+## 🛠️ Pattern Command Tambahan (Tahap 5-6)
+
+### Permit Signature (EIP-712)
+```javascript
+const domain = { name: "Guardians Token", version: "1", chainId: 31337, verifyingContract: addr };
+const types = { Permit: [
+  {name:"owner",type:"address"}, {name:"spender",type:"address"},
+  {name:"value",type:"uint256"}, {name:"nonce",type:"uint256"},
+  {name:"deadline",type:"uint256"}
+]};
+const signature = await signer.signTypedData(domain, types, message);
+const sig = ethers.Signature.from(signature);  // pecah jadi r/s/v
+await token.permit(owner, spender, value, deadline, sig.v, sig.r, sig.s);
+```
+
+### Fork Activation
+```bash
+FORK=true BSC_RPC=https://bsc.drpc.org npx hardhat console
+```
+Lalu di console:
+```javascript
+await network.provider.send("evm_mine");  // workaround EDR hardfork
+```
+
+### Impersonate Account
+```javascript
+await network.provider.request({ method: "hardhat_impersonateAccount", params: [addr] });
+const signer = await ethers.getSigner(addr);
+// Sekarang signer bisa kirim TX seolah-olah dia owner address-nya
+```
+
+### Interaksi Real PancakeSwap
+```javascript
+const routerAbi = [
+  "function addLiquidityETH(address,uint256,uint256,uint256,address,uint256) payable returns (uint256,uint256,uint256)",
+  "function getAmountsOut(uint256,address[]) view returns (uint256[])",
+  "function swapExactETHForTokens(uint256,address[],address,uint256) payable returns (uint256[])",
+  "function factory() view returns (address)"
+];
+const router = new ethers.Contract("0x10ED43C718714eb63d5aA57B78B54704E256024E", routerAbi, signer);
+```
+
+### AMM Price Formula
+```javascript
+// Harga token dari reserves V2:
+const price = (Number(reserves[0]) / 1e18) / (Number(reserves[1]) / 1e18);
+// Quote output tanpa execute:
+const amounts = await router.getAmountsOut(amountIn, [tokenIn, tokenOut]);
+```
+
+---
+
 ## 🚧 To-Do / Tahap Selanjutnya
 
-- [ ] Tahap 5 — Permit / Gasless Approval (EIP-2612)
-- [ ] Tahap 6 — Fork BSC Mainnet (simulasi real-world deploy dengan PancakeSwap)
+- [ ] Tahap 7 — Fuzz testing & Coverage (Foundry/Hardhat)
+- [ ] Tahap 8 — Upgradeability (UUPS proxy pattern)
+- [ ] Tahap 9 — Static analysis (Slither, Mythril)
+- [ ] Tahap 10 — Deploy ke BSC testnet real, verify di BscScan
 - [ ] Challenge: deploy GOTT dengan `initialMintPercent = 60`, set max wallet 5%, test edge cases
-- [ ] Explore: proxy pattern untuk upgradeability
 - [ ] Explore: hardhat-gas-reporter plugin untuk automated gas table generation
+- [ ] Explore: launch helper contract dengan max-buy limit beberapa menit pertama
+- [ ] Explore: LP token locker integration (Unicrypt/Team.Finance pattern)
 
 ---
 

@@ -19,6 +19,28 @@ module.exports = {
   networks: {
     hardhat: {
       chainId: 31337,
+      forking: process.env.FORK === "true" ? {
+        url: process.env.BSC_RPC || "https://bsc-dataseed.binance.org",
+        blockNumber: process.env.FORK_BLOCK ? parseInt(process.env.FORK_BLOCK) : undefined,
+      } : undefined,
+      hardfork: "shanghai",
+      chains: {
+        56: {
+          hardforkHistory: {
+            byzantium: 0,
+            constantinople: 0,
+            petersburg: 0,
+            istanbul: 0,
+            muirGlacier: 0,
+            berlin: 0,
+            london: 0,
+            arrowGlacier: 0,
+            grayGlacier: 0,
+            merge: 0,
+            shanghai: 0,
+          },
+        },
+      },
     },
     bscTestnet: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545",
