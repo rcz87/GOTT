@@ -52,12 +52,13 @@ GuardiansToken.sol — MODIFIED (incremental)
   ├── [KEEP]   ERC20 + Votes + Permit + Burnable + Pausable + AccessControl
   ├── [KEEP]   MAX_SUPPLY = 1B
   ├── [KEEP]   Roles: DEFAULT_ADMIN, MINTER, PAUSER
-  ├── [REMOVE] Anti-whale mechanism (maxWalletAmount + exempt mapping + 3 setters)
+  ├── [REMOVE] Anti-whale mechanism (maxWalletAmount + exempt mapping + 3 setters) — full delete, no slot reservation (immutable, no proxy)
   ├── [ADD]    CLEANUP_MINER_ROLE
-  ├── [ADD]    MAX_MINT_PER_EPOCH constant + mintedPerEpoch mapping
+  ├── [ADD]    MAX_MINT_PER_DAY constant (1.4M) + mintedPerDay mapping
   ├── [ADD]    mintReward(to, amount) function
-  ├── [ADD]    currentEpochMinted() / remainingMintCapacity() views
-  └── [CHANGE] Constructor signature — initial mint reduced to ~7.5% (75M)
+  ├── [ADD]    currentDayMinted() / remainingMintCapacity() views
+  ├── [ADD]    distributeInitial(recipients[], amounts[]) — one-shot, guarded by `initialized` flag
+  └── [CHANGE] Constructor mints 0; initialMintPercent param dihapus (split distribution via distributeInitial)
 
 NEW CONTRACTS (P0 = required for launch)
   ├── GarbageCollector.sol   (P0) — cleanup execution, PancakeSwap integration
@@ -69,32 +70,21 @@ NEW CONTRACTS (P0 = required for launch)
   └── NFTGraveyard.sol       (P3) — curated dead-NFT marketplace (post-launch)
 ```
 
-## Spec Inconsistencies to Resolve FIRST
+## Spec Inconsistencies — RESOLVED (2026-05-07)
 
-Sebelum sentuh kode, dua angka berikut konflik antar dokumen v2 — pilih final value dulu:
+### 1. Daily mint cap — FIXED at `1_400_000 ether`, renamed `MAX_MINT_PER_DAY`
 
-### 1. `MAX_MINT_PER_EPOCH`
+Math: Mining pool Epoch 1 = 250M GOTT / 180 days = ~1.389M/day → 1.4M cap fits with ~1% buffer. 1M would block natural emission.
 
-| Dokumen | Value |
-|---------|-------|
-| `BLUEPRINT.md` §5.1 | `1_000_000 ether` (1M/day) |
-| `docs/04-smart-contracts.md` §1 | `1_400_000 ether` (1.4M/day) |
+Renamed dari `MAX_MINT_PER_EPOCH` → `MAX_MINT_PER_DAY` (dan `mintedPerEpoch` → `mintedPerDay`) supaya tidak bertabrakan dengan istilah "epoch" 180-hari di `CleanupMining.sol` (halving). `EPOCH_DURATION = 1 days` constant juga di-drop dari token — pakai `1 days` inline. Updated di:
+- `BLUEPRINT.md` §5.1
+- `docs/04-smart-contracts.md` §1 (termasuk `IGuardiansToken` interface di §3)
 
-**Math check:**
-- Mining pool Epoch 1 = 250M GOTT over 180 days → average **1.389M/day**
-- 1M cap → akan block emisi natural Epoch 1 hari-hari peak cleanup
-- 1.4M cap → fits dengan ~1% buffer
+### 2. Initial mint — FIXED: split distribution
 
-**Rekomendasi:** `1_400_000 ether`. Update `BLUEPRINT.md` §5.1 untuk match `docs/04`.
+Constructor mint 0. Tambah fungsi `distributeInitial(address[] recipients, uint256[] amounts)` yang one-shot (guarded by `bool initialized`) — split TGE allocation (LP 25M / Marketing 25M / Airdrop 25M = 75M total per `BLUEPRINT.md` §6.3) ke multiple recipient dalam single TX. Param `initialMintPercent` v1 dihapus dari constructor signature.
 
-### 2. Initial mint
-
-| Dokumen | Value |
-|---------|-------|
-| v1 constructor | `initialMintPercent` param (tested 40% = 400M) |
-| `BLUEPRINT.md` §6.3 | 75M initial circulating (7.5%) |
-
-**Rekomendasi:** Constructor tetap parameterized, tapi deploy script pakai `7.5` (atau mint 0 di constructor dan distribusi via separate functions untuk LP/airdrop/marketing). Decision point sebelum coding.
+**Why:** v2 punya multi-bucket initial circulating (LP + Marketing + Airdrop), satu param percent gak fit. Split distribution juga easier di-audit (recipient & amount eksplisit di calldata, terverifikasi on-chain).
 
 ## Migration Path — Phased
 
@@ -102,15 +92,20 @@ Sebelum sentuh kode, dua angka berikut konflik antar dokumen v2 — pilih final 
 - [x] Consolidate blueprint (zip extracted, docs/ created)
 - [x] Archive v1 blueprint
 - [x] Write MIGRATION.md + CHANGELOG update
-- [ ] User review & approval for spec inconsistencies above
+- [x] User review & approval for spec inconsistencies above (2026-05-07)
+- [x] Resolve Q1–Q4 (see "Decisions" section below) (2026-05-07)
 
 ### Phase 1 (v0.3.0) — MODIFY `GuardiansToken.sol`
 - [ ] Create working branch (jangan di main)
-- [ ] Remove anti-whale code
-- [ ] Add `CLEANUP_MINER_ROLE` + `MAX_MINT_PER_EPOCH` logic
-- [ ] Add `mintReward()` function
-- [ ] Update existing tests (anti-whale tests → remove, add mintReward tests)
-- [ ] Update Foundry fuzz (new invariants)
+- [ ] Remove anti-whale code in full (`maxWalletAmount`, `isExemptFromMaxWallet`, 3 setters, modifier, related events) — no storage slot reserved (immutable)
+- [ ] Drop `initialMintPercent` from constructor; constructor mints 0
+- [ ] Add `CLEANUP_MINER_ROLE` + `MAX_MINT_PER_DAY` (1.4M) + `mintedPerDay` mapping
+- [ ] Add `mintReward()` function with daily cap + MAX_SUPPLY check
+- [ ] Add `currentDayMinted()` + `remainingMintCapacity()` views
+- [ ] Add `distributeInitial(recipients[], amounts[])` one-shot guarded by `bool initialized`
+- [ ] Update `scripts/deploy.js` — pass recipient/amount arrays for initial distribution (LP/Marketing/Airdrop)
+- [ ] Update existing tests (anti-whale tests → remove, add mintReward + distributeInitial tests)
+- [ ] Update Foundry fuzz (new invariants: daily cap never exceeded, initialized one-shot)
 - [ ] Re-run Slither → target 0 findings
 - [ ] Re-run Foundry fuzz → all pass
 
@@ -153,11 +148,26 @@ Selama migrasi, yang tidak akan pernah berubah tanpa diskusi:
 - OpenZeppelin version: current (v5.1+)
 - EVM version: `cancun` (required by OZ v5.1+ Bytes.sol `mcopy`)
 
-## Questions Before Coding
+## Decisions (2026-05-07)
 
-1. **Initial mint policy**: Keep `initialMintPercent` param, atau switch ke distribusi split (mint 0 di constructor, separate `distributeInitial()` calls)?
-2. **Anti-whale removal**: Apakah benar-benar remove total atau kept sebagai toggle-off default (keeps storage slot untuk upgradability)?
-3. **Epoch definition**: `mintedPerEpoch` key pakai `block.timestamp / 1 days` (daily), atau `/ EPOCH_DURATION` (6-month mining epoch)? Dua konsep "epoch" bertabrakan di spec.
-4. **Upgradability**: Token upgradable (UUPS/Transparent proxy) atau immutable? v1 immutable; v2 spec tidak eksplisit.
+Empat keputusan yang sebelumnya block Phase 1 sudah di-resolve oleh user (rcz87):
 
-Jawaban 4 pertanyaan di atas harus fix sebelum mulai Phase 1 coding.
+### Q1 — Initial mint: **Split distribution**
+Constructor mint 0. Tambah `distributeInitial(address[] recipients, uint256[] amounts)` one-shot yang split ke multiple recipient (LP/Marketing/Airdrop) sesuai blueprint §6.3. Param `initialMintPercent` v1 dihapus.
+
+### Q2 — Anti-whale: **Remove totally**
+Hapus storage slot, modifier, 3 setter, exempt mapping, dan related events — full delete. Konsisten dengan Q4 (immutable: gak butuh slot reservation buat future toggle).
+
+### Q3 — Epoch definition: **Daily**
+Token-side pakai `block.timestamp / 1 days`. Konstanta + mapping di-rename:
+- `MAX_MINT_PER_EPOCH` → `MAX_MINT_PER_DAY`
+- `mintedPerEpoch` → `mintedPerDay`
+- `EPOCH_DURATION = 1 days` constant di token → dropped (pakai `1 days` inline)
+
+Istilah "epoch" reserved untuk halving 180-hari di `CleanupMining.sol`. Zero ambiguity saat kedua contract co-exist.
+
+### Q4 — Upgradability: **Immutable** (sama seperti v1)
+Tidak ada proxy. Audit lebih simpel, gak ada admin-key risk, gak perlu storage layout discipline. Trade-off: bug post-launch = redeploy + migration. Mitigasi: Slither + Foundry fuzz coverage tinggi sebelum mainnet.
+
+### Phase 1 entry criteria — UNBLOCKED
+Phase 1 (v0.3.0) sekarang boleh dimulai. Workflow: working branch → diff plan review user → implement → tests → Slither → Foundry → user review → merge.

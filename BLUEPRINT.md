@@ -189,20 +189,20 @@ Modifikasi dari contract existing:
 - **Remove:** Anti-whale max wallet (biar distribution mining natural)
 - **Keep:** ERC20Votes, ERC20Permit, Pausable, AccessControl, Burnable
 - **Add:** `CLEANUP_MINER_ROLE` — role untuk CleanupMining contract bisa mint
-- **Add:** Mint cap per epoch (anti-exploit)
+- **Add:** Daily mint cap (anti-exploit). Naming `PER_DAY` dipilih supaya tidak bertabrakan dengan istilah "epoch" 180-hari di `CleanupMining.sol` (halving).
 
 ```solidity
 bytes32 public constant CLEANUP_MINER_ROLE = keccak256("CLEANUP_MINER_ROLE");
-uint256 public constant MAX_MINT_PER_EPOCH = 1_000_000 ether; // 1M per hari
-mapping(uint256 => uint256) public mintedPerEpoch;
+uint256 public constant MAX_MINT_PER_DAY = 1_400_000 ether; // 1.4M/hari, fits Epoch 1 mining (~1.389M/day avg)
+mapping(uint256 => uint256) public mintedPerDay; // key = block.timestamp / 1 days
 
 function mintReward(address to, uint256 amount)
     external onlyRole(CLEANUP_MINER_ROLE)
 {
-    uint256 epoch = block.timestamp / 1 days;
-    require(mintedPerEpoch[epoch] + amount <= MAX_MINT_PER_EPOCH, "Daily cap");
+    uint256 day = block.timestamp / 1 days;
+    require(mintedPerDay[day] + amount <= MAX_MINT_PER_DAY, "Daily cap");
     require(totalSupply() + amount <= MAX_SUPPLY, "Max supply");
-    mintedPerEpoch[epoch] += amount;
+    mintedPerDay[day] += amount;
     _mint(to, amount);
 }
 ```

@@ -26,8 +26,11 @@
 
 **Add:**
 - `CLEANUP_MINER_ROLE` for CleanupMining contract
-- `MAX_MINT_PER_EPOCH` daily cap (anti-exploit)
+- `MAX_MINT_PER_DAY` daily cap (anti-exploit)
 - `mintReward()` function with daily cap check
+- `distributeInitial()` one-shot function for TGE distribution (constructor mints 0)
+
+> Naming: token-side memakai `PER_DAY`. Istilah "epoch" direservasi untuk halving 180-hari di `CleanupMining.sol`.
 
 ### Interface
 
@@ -36,20 +39,19 @@
 
 bytes32 public constant CLEANUP_MINER_ROLE = keccak256("CLEANUP_MINER_ROLE");
 
-uint256 public constant MAX_MINT_PER_EPOCH = 1_400_000 ether;
-uint256 public constant EPOCH_DURATION = 1 days;
+uint256 public constant MAX_MINT_PER_DAY = 1_400_000 ether;
 
-mapping(uint256 => uint256) public mintedPerEpoch;
+mapping(uint256 => uint256) public mintedPerDay; // key = block.timestamp / 1 days
 
-event RewardMinted(address indexed to, uint256 amount, uint256 epoch);
+event RewardMinted(address indexed to, uint256 amount, uint256 day);
 
 function mintReward(address to, uint256 amount)
     external
     onlyRole(CLEANUP_MINER_ROLE)
 {
-    uint256 epoch = block.timestamp / EPOCH_DURATION;
+    uint256 day = block.timestamp / 1 days;
     require(
-        mintedPerEpoch[epoch] + amount <= MAX_MINT_PER_EPOCH,
+        mintedPerDay[day] + amount <= MAX_MINT_PER_DAY,
         "Daily mint cap exceeded"
     );
     require(
@@ -57,19 +59,19 @@ function mintReward(address to, uint256 amount)
         "Max supply exceeded"
     );
 
-    mintedPerEpoch[epoch] += amount;
+    mintedPerDay[day] += amount;
     _mint(to, amount);
 
-    emit RewardMinted(to, amount, epoch);
+    emit RewardMinted(to, amount, day);
 }
 
-function currentEpochMinted() external view returns (uint256) {
-    return mintedPerEpoch[block.timestamp / EPOCH_DURATION];
+function currentDayMinted() external view returns (uint256) {
+    return mintedPerDay[block.timestamp / 1 days];
 }
 
 function remainingMintCapacity() external view returns (uint256) {
-    uint256 epoch = block.timestamp / EPOCH_DURATION;
-    return MAX_MINT_PER_EPOCH - mintedPerEpoch[epoch];
+    uint256 day = block.timestamp / 1 days;
+    return MAX_MINT_PER_DAY - mintedPerDay[day];
 }
 ```
 
@@ -78,6 +80,7 @@ function remainingMintCapacity() external view returns (uint256) {
 - `CLEANUP_MINER_ROLE` harus hanya granted ke `CleanupMining.sol` address
 - Daily cap mencegah single-exploit drain seluruh emission pool
 - `MAX_SUPPLY` hard cap tetap enforced
+- `distributeInitial()` guarded one-shot (`bool initialized`) — gak bisa dipanggil dua kali
 
 ## 2. GarbageCollector.sol
 
@@ -303,7 +306,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 interface IGuardiansToken {
     function mintReward(address to, uint256 amount) external;
-    function MAX_MINT_PER_EPOCH() external view returns (uint256);
+    function MAX_MINT_PER_DAY() external view returns (uint256);
 }
 
 contract CleanupMining is AccessControl, ReentrancyGuard {
