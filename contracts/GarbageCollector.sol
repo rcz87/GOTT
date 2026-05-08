@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -38,10 +40,11 @@ interface IScamRegistry {
  *         are blocked from the swap path; user must use sendScamToLandfill explicitly.
  *         Tokens that fail to swap fall through to LandfillVault.
  *
- * @dev TODO: cleanupValueUSD is currently user-supplied — needs signed commitment from
- *      backend oracle before mainnet to prevent self-reported reward gaming.
+ * @dev `cleanupValueUSD` is authorised via an EIP-712 signature from `oracleSigner`
+ *      (a backend service) — prevents self-reported reward gaming. Each authorisation
+ *      is single-use (consumes a nonce) and time-bound (deadline).
  */
-contract GarbageCollector is AccessControl, Pausable, ReentrancyGuard {
+contract GarbageCollector is AccessControl, Pausable, ReentrancyGuard, EIP712 {
     using SafeERC20 for IERC20;
 
     // ============================================================
@@ -64,6 +67,7 @@ contract GarbageCollector is AccessControl, Pausable, ReentrancyGuard {
     // ============================================================
     ICleanupMining public miningContract;
     address public landfillVault;
+    address public oracleSigner;
 
     // ============================================================
     //                     MUTABLE CONFIG
@@ -72,6 +76,16 @@ contract GarbageCollector is AccessControl, Pausable, ReentrancyGuard {
     uint256 public swapDeadlineBuffer = 10 minutes;
     uint256 public minCleanupValueUSD = 1e18;          // $1 minimum (1e18-scaled)
     uint256 public constant MAX_TOKENS_HARD_CAP = 50;  // sanity bound for setMaxTokensPerCleanup
+
+    // ============================================================
+    //                       EIP-712
+    // ============================================================
+    /// @dev keccak256("CleanupAuthorization(address user,bytes32 batchHash,uint256 cleanupValueUSD,uint256 nonce,uint256 deadline)")
+    bytes32 public constant CLEANUP_AUTH_TYPEHASH =
+        keccak256("CleanupAuthorization(address user,bytes32 batchHash,uint256 cleanupValueUSD,uint256 nonce,uint256 deadline)");
+
+    /// @notice Per-user monotonic nonce — included in every signed authorization.
+    mapping(address => uint256) public nonces;
 
     // ============================================================
     //                          EVENTS
@@ -88,6 +102,7 @@ contract GarbageCollector is AccessControl, Pausable, ReentrancyGuard {
 
     event MiningContractChanged(address indexed oldAddr, address indexed newAddr);
     event LandfillVaultChanged(address indexed oldAddr, address indexed newAddr);
+    event OracleSignerChanged(address indexed oldAddr, address indexed newAddr);
     event MaxTokensChanged(uint256 oldMax, uint256 newMax);
     event MinCleanupValueChanged(uint256 oldValue, uint256 newValue);
     event SwapDeadlineBufferChanged(uint256 oldBuffer, uint256 newBuffer);
@@ -106,6 +121,9 @@ contract GarbageCollector is AccessControl, Pausable, ReentrancyGuard {
     error InvalidMinCleanupValue();
     error InvalidSwapDeadlineBuffer();
     error TokenIsScam(address token);
+    error InvalidSignature();
+    error SignatureExpired();
+    error InvalidNonce(uint256 expected, uint256 provided);
 
     // ============================================================
     //                       CONSTRUCTOR
@@ -116,20 +134,23 @@ contract GarbageCollector is AccessControl, Pausable, ReentrancyGuard {
         address _wbnb,
         address _scamRegistry,
         address _mining,
-        address _vault
-    ) {
+        address _vault,
+        address _oracleSigner
+    ) EIP712("GarbageCollector", "1") {
         if (admin == address(0)) revert ZeroAddress();
         if (_router == address(0)) revert ZeroAddress();
         if (_wbnb == address(0)) revert ZeroAddress();
         if (_scamRegistry == address(0)) revert ZeroAddress();
         if (_mining == address(0)) revert ZeroAddress();
         if (_vault == address(0)) revert ZeroAddress();
+        if (_oracleSigner == address(0)) revert ZeroAddress();
 
         router = IPancakeRouter(_router);
         WBNB = _wbnb;
         scamRegistry = IScamRegistry(_scamRegistry);
         miningContract = ICleanupMining(_mining);
         landfillVault = _vault;
+        oracleSigner = _oracleSigner;
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ADMIN_ROLE, admin);
@@ -145,19 +166,28 @@ contract GarbageCollector is AccessControl, Pausable, ReentrancyGuard {
      * @param tokens           Token addresses to swap.
      * @param amounts          Amount per token (parallel to `tokens`).
      * @param minBnbOut        Minimum total BNB the user expects (slippage guard).
-     * @param cleanupValueUSD  Off-chain-computed USD value, 1e18-scaled.
+     * @param cleanupValueUSD  Off-chain-computed USD value, 1e18-scaled, signed by oracle.
+     * @param nonce            Per-user nonce (must equal `nonces[msg.sender]`).
+     * @param deadline         Unix timestamp after which the signature is rejected.
+     * @param signature        EIP-712 signature by `oracleSigner` over the auth struct.
      */
     function cleanupBatch(
         address[] calldata tokens,
         uint256[] calldata amounts,
         uint256 minBnbOut,
-        uint256 cleanupValueUSD
+        uint256 cleanupValueUSD,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature
     ) external nonReentrant whenNotPaused returns (uint256 totalBnbReceived) {
         uint256 len = tokens.length;
         if (len != amounts.length) revert InvalidLength();
         if (len == 0) revert InvalidLength();
         if (len > maxTokensPerCleanup) revert TooManyTokens();
         if (cleanupValueUSD < minCleanupValueUSD) revert BelowMinThreshold();
+
+        // Auth check + nonce consumption.
+        _verifyAndConsumeAuth(tokens, amounts, cleanupValueUSD, nonce, deadline, signature);
 
         // Pre-check: scam-classified tokens must use sendScamToLandfill explicitly.
         // calls-loop is intentional — gas bounded by maxTokensPerCleanup (≤ MAX_TOKENS_HARD_CAP).
@@ -167,11 +197,9 @@ contract GarbageCollector is AccessControl, Pausable, ReentrancyGuard {
         }
 
         uint256 bnbBefore = address(this).balance;
-
         for (uint256 i = 0; i < len; ++i) {
             _swapTokenToBNB(tokens[i], amounts[i], msg.sender);
         }
-
         totalBnbReceived = address(this).balance - bnbBefore;
         if (totalBnbReceived < minBnbOut) revert InsufficientBnbOut(totalBnbReceived, minBnbOut);
 
@@ -189,12 +217,45 @@ contract GarbageCollector is AccessControl, Pausable, ReentrancyGuard {
         }
     }
 
+    /// @dev Verifies oracle signature, consumes nonce. Reverts on any check failure.
+    function _verifyAndConsumeAuth(
+        address[] calldata tokens,
+        uint256[] calldata amounts,
+        uint256 cleanupValueUSD,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature
+    ) internal {
+        // Standard EIP-712 deadline check — `block.timestamp` comparison is the
+        // canonical pattern (Permit2, EIP-2612, etc.). Slither's `timestamp` warning
+        // is a false positive for signature expiry.
+        // slither-disable-next-line timestamp
+        if (block.timestamp > deadline) revert SignatureExpired();
+
+        uint256 expected = nonces[msg.sender];
+        if (nonce != expected) revert InvalidNonce(expected, nonce);
+
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(abi.encode(
+                CLEANUP_AUTH_TYPEHASH,
+                msg.sender,
+                keccak256(abi.encode(tokens, amounts)),
+                cleanupValueUSD,
+                nonce,
+                deadline
+            ))
+        );
+        if (ECDSA.recover(digest, signature) != oracleSigner) revert InvalidSignature();
+
+        nonces[msg.sender] = expected + 1;
+    }
+
     // ============================================================
     //                  EXPLICIT LANDFILL DEPOSIT
     // ============================================================
 
     /**
-     * @notice Push known scam/dust tokens to LandfillVault — no reward.
+     * @notice Push known scam/dust tokens to LandfillVault — no reward, no signature needed.
      */
     function sendScamToLandfill(address[] calldata tokens, uint256[] calldata amounts)
         external
@@ -248,6 +309,25 @@ contract GarbageCollector is AccessControl, Pausable, ReentrancyGuard {
     }
 
     // ============================================================
+    //                     OFF-CHAIN HELPERS
+    // ============================================================
+
+    /// @notice Compute the EIP-712 digest the oracle must sign for a given cleanup batch.
+    function hashCleanupAuth(
+        address user,
+        address[] calldata tokens,
+        uint256[] calldata amounts,
+        uint256 cleanupValueUSD,
+        uint256 nonce,
+        uint256 deadline
+    ) external view returns (bytes32) {
+        bytes32 batchHash = keccak256(abi.encode(tokens, amounts));
+        return _hashTypedDataV4(
+            keccak256(abi.encode(CLEANUP_AUTH_TYPEHASH, user, batchHash, cleanupValueUSD, nonce, deadline))
+        );
+    }
+
+    // ============================================================
     //                     ADMIN / DAO TUNING
     // ============================================================
 
@@ -263,6 +343,13 @@ contract GarbageCollector is AccessControl, Pausable, ReentrancyGuard {
         address old = landfillVault;
         landfillVault = newVault;
         emit LandfillVaultChanged(old, newVault);
+    }
+
+    function setOracleSigner(address newSigner) external onlyRole(ADMIN_ROLE) {
+        if (newSigner == address(0)) revert ZeroAddress();
+        address old = oracleSigner;
+        oracleSigner = newSigner;
+        emit OracleSignerChanged(old, newSigner);
     }
 
     function setMaxTokensPerCleanup(uint256 newMax) external onlyRole(ADMIN_ROLE) {

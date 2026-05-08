@@ -12,7 +12,7 @@ const SUPPORT_FOR = 1;
 
 describe("Phase 3 PR #2 — Role transfer to Timelock", function () {
   async function fullSystemFixture() {
-    const [deployer, voter, recipient] = await ethers.getSigners();
+    const [deployer, voter, recipient, oracleSigner] = await ethers.getSigners();
 
     // ---- Phase 1: Token ----
     const Token = await ethers.getContractFactory("GuardiansToken");
@@ -50,6 +50,7 @@ describe("Phase 3 PR #2 — Role transfer to Timelock", function () {
       await registry.getAddress(),
       await mining.getAddress(),
       await vault.getAddress(),
+      oracleSigner.address,
     );
     await gc.waitForDeployment();
     await mining.grantRole(await mining.COLLECTOR_ROLE(), await gc.getAddress());
