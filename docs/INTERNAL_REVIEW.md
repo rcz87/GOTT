@@ -2,7 +2,7 @@
 
 > **Status:** Pre-audit internal review. Intended for an external audit firm (SolidProof / Hacken tier) with no prior project context.
 > **Commit under review:** `8a80b35` (main).
-> **Document version:** Draft 0.3 — §4 Contract Inventory + §5 Role Matrix complete; test counts reconciled (193 Hardhat + 54 Foundry); §7–§16, §1, and appendices pending.
+> **Document version:** Draft 0.4 — §4 + §5 + §10 (AD-02..AD-11 body) complete; test counts reconciled (193 Hardhat + 54 Foundry); §6 body, §7, §8, §9, §11, §12, §13, §14, §15, §16, §1 pending.
 
 ---
 
@@ -16,7 +16,7 @@
 
 This section tracks the internal drafting state. It is **not** part of the deliverable to the audit firm; it will be deleted in the Draft 1.0 cut.
 
-### Done in this revision (Draft 0.3)
+### Done in this revision (Draft 0.4)
 
 | Section | Status | Notes |
 |---|---|---|
@@ -31,40 +31,40 @@ This section tracks the internal drafting state. It is **not** part of the deliv
 | §4.7 GuardiansGovernor | ✅ Complete | OZ module composition (151 LoC, 9 required overrides). AD-11 (BSC block-time variance) forward-ref'd to §10. |
 | §5 Role Matrix | ✅ Complete | Consolidated table across 7 contracts + 4 post-table notes (contract-bound roles, hot keys, pause asymmetry, roleless Governor). |
 | §6 Invariant ID registry | ✅ Stub complete | I-01..I-17. Body proof-sketches pending. |
+| §10 Acknowledged Design Decisions (body) | ✅ Complete | AD-02..AD-11 drafted using the 9-element format (Title / Severity / Affected / Decision / Rationale / Risk / Mitigation / Residual / Cross-ref). AD-01 reserved for the highest-priority external-audit finding. Severities: AD-02..AD-04 Low, AD-05/AD-06/AD-09/AD-10/AD-11 Info, AD-07 Med, AD-08 Low–Med. |
 | Test count reconciliation | ✅ Done | **193 Hardhat + 54 Foundry = 247 total, 100% pass.** Run output: 0 failed, 0 skipped. Earlier 167+35 scan was undercount; PR-claimed 193+54 verified. Per-file: GuardiansToken 40/11, ScamRegistry 29/9, LandfillVault 27/10, CleanupMining 38/10, GarbageCollector 32/9, Governance 15/5, RoleTransfer 12/—. |
 
 ### Pending sections (planned order)
 
 | Order | Section | Estimated complexity | Blocker / dependency |
 |---|---|---|---|
-| 1 | §10 Acknowledged Design Decisions (body) | Medium — write AD-01..AD-11 entries with severity + acceptance rationale | User ack on proposed severities for AD-07..AD-11. |
-| 2 | §6 body proof-sketches | Medium — one paragraph per invariant I-01..I-17 | Registry stub already done. |
-| 3 | §9 Trust Assumptions & Oracle Surface | Medium — formalises the two "hot key" surfaces (`oracleSigner`, `ORACLE_ROLE`) and PancakeRouter trust boundary | Pulls from §4.5.4, §5.3 hot-key table, and §3.4. |
-| 4 | §7 External Call Graph | Low–Medium — diagrams already partially in §3.2; this section is the formal version with arrow direction + role gates | None. |
-| 5 | §11 Gas & DoS Surface | Medium — covers `MAX_TOKENS_HARD_CAP = 50`, the per-batch loops in `cleanupBatch`, registry write fan-out | Benefits from real-token fork tests (§4.5.13 gap). |
-| 6 | §8 Storage Layout & Upgrade Story | Low — protocol is non-upgradeable; section states this and walks each contract's storage layout for completeness | None. |
-| 7 | §13 Emergency Response | Medium — playbook for the AD-flagged scenarios (oracle key compromise, ORACLE_ROLE compromise, router incident, Timelock-stuck proposal) | Depends on §9 and §10 to be drafted first. |
-| 8 | §14 Test Coverage Summary | Low — write up the verified 193+54 numbers + coverage-gap rollup from §4.X.13 cells | Test counts already verified (Draft 0.3). |
-| 9 | §15 Out of Scope | Low — short list (off-chain signer infra, ORACLE_ROLE keeper service, frontend) | None. |
-| 10 | §16 Appendices (Glossary, EIP-712, Reward Formula derivation, Build & Reproducibility, Repo refs) | Medium | Reward-formula derivation pulls from §4.4.12 inline rationale. |
-| 11 | §12 Deployment Reference | Low — short stub + link to `docs/DEPLOYMENT.md` | **Blocker: `docs/DEPLOYMENT.md` does not yet exist.** Create alongside §12 drafting. |
-| 12 | §1 Document Purpose | Low | Write **last**, after every other section is final. |
+| 1 | §6 body proof-sketches | Medium — one paragraph per invariant I-01..I-17 | Registry stub already done. |
+| 2 | §9 Trust Assumptions & Oracle Surface | Medium — formalises the two "hot key" surfaces (`oracleSigner`, `ORACLE_ROLE`) and PancakeRouter trust boundary | Pulls from §4.5.4, §5.3 hot-key table, §3.4, and §10 AD-07/AD-02. |
+| 3 | §7 External Call Graph | Low–Medium — diagrams already partially in §3.2; this section is the formal version with arrow direction + role gates | None. |
+| 4 | §11 Gas & DoS Surface | Medium — covers `MAX_TOKENS_HARD_CAP = 50`, the per-batch loops in `cleanupBatch`, registry write fan-out | Benefits from real-token fork tests (§4.5.13 gap). |
+| 5 | §8 Storage Layout & Upgrade Story | Low — protocol is non-upgradeable; section states this and walks each contract's storage layout for completeness | None. |
+| 6 | §13 Emergency Response | Medium — playbook for AD-07 (oracle key compromise), AD-02 (ORACLE_ROLE compromise), router incident, Timelock-stuck proposal, paused-vault recovery | §9 + §10 already drafted. |
+| 7 | §14 Test Coverage Summary | Low — write up the verified 193+54 numbers + coverage-gap rollup from §4.X.13 cells | Test counts already verified. |
+| 8 | §15 Out of Scope | Low — short list (off-chain signer infra, ORACLE_ROLE keeper service, frontend) | None. |
+| 9 | §16 Appendices (Glossary, EIP-712, Reward Formula derivation, Build & Reproducibility, Repo refs) | Medium | Reward-formula derivation pulls from §4.4.12 inline rationale + AD-05. |
+| 10 | §12 Deployment Reference | Low — short stub + link to `docs/DEPLOYMENT.md` | **Blocker: `docs/DEPLOYMENT.md` does not yet exist.** Create alongside §12 drafting. |
+| 11 | §1 Document Purpose | Low | Write **last**, after every other section is final. |
 
-### Pending design acceptances (§10 — awaiting user severity ack)
+### Design acceptances catalog (§10 body now drafted — all severities user-ack'd)
 
-| AD | Title | Proposed severity | Origin |
+| AD | Title | Severity (final) | Origin |
 |---|---|---|---|
-| AD-01 | *reserved* | — | — |
-| AD-02 | ScamRegistry pause response window (48 h, no EMERGENCY backup; zero funds) | Low | §4.2.4 |
-| AD-03 | LandfillVault FoT amount-vs-event drift (no balanceBefore/After diff) | Low | §4.3.6 |
-| AD-04 | Deploy collapses LandfillVault role separation (all 4 roles → Timelock) | Low | §4.3.4 |
-| AD-05 | CleanupMining divide-before-multiply pattern (overflow protection trade-off) | Info | §4.4.12 |
-| AD-06 | GuardiansToken UTC mint bucket timestamp granularity | Info | §3.4 + §4.1 |
-| AD-07 | `oracleSigner` single-key risk (compromise → mint up to `MAX_MINT_PER_DAY`) | **Med** | §4.5.4 |
-| AD-08 | Swap-fail fallback → user loses token to landfill without BNB refund | **Low–Med** | §4.5.6 |
-| AD-09 | Per-token slippage = 0; sandwich-attack defense relies on caller-supplied `minBnbOut` | Info | §4.5.6 |
-| AD-10 | Timelock open executor (`executors = [address(0)]`) | Info | §4.6.4 |
-| AD-11 | BSC block-time variance (2.5–4 s) affects effective Governor voting window | Info | §4.7.10 |
+| AD-01 | *reserved for highest-priority external-audit finding* | — | — |
+| AD-02 | ScamRegistry pause response window (48 h, no EMERGENCY backup; zero funds) | Low ✅ | §4.2.4 |
+| AD-03 | LandfillVault FoT amount-vs-event drift (no balanceBefore/After diff) | Low ✅ | §4.3.6 |
+| AD-04 | Deploy collapses LandfillVault role separation (all 4 roles → Timelock) | Low ✅ | §4.3.4 |
+| AD-05 | CleanupMining divide-before-multiply pattern (overflow protection trade-off) | Info ✅ | §4.4.12 |
+| AD-06 | GuardiansToken UTC mint bucket timestamp granularity | Info ✅ | §3.4 + §4.1 |
+| AD-07 | `oracleSigner` single-key risk (compromise → mint up to `MAX_MINT_PER_DAY`) | **Med** ✅ | §4.5.4 |
+| AD-08 | Swap-fail fallback → user loses token to landfill without BNB refund | **Low–Med** ✅ | §4.5.6 |
+| AD-09 | Per-token slippage = 0; sandwich-attack defense relies on caller-supplied `minBnbOut` | Info ✅ | §4.5.6 |
+| AD-10 | Timelock open executor (`executors = [address(0)]`) | Info ✅ | §4.6.4 |
+| AD-11 | BSC block-time variance (2.5–4 s) affects effective Governor voting window | Info ✅ | §4.7.10 |
 
 ### Coverage gaps to flag in §14
 
@@ -1859,4 +1859,267 @@ Authorization on the Governor is by *delegated voting weight* (for `propose`) an
 - Source for Phase A/B/C lifecycle: §3.3.
 
 ---
+
+## §10 Acknowledged Design Decisions
+
+This section catalogs every deliberate trade-off the protocol team has made where the chosen design has known second-order effects that an auditor might otherwise flag as a finding. Each entry follows a 9-element format so the audit firm can decide independently whether to accept, push back, or escalate.
+
+Severity levels follow the SolidProof / Hacken convention:
+- **Critical / High** — none in this catalog. (Any High-severity item would block the audit submission.)
+- **Med** — non-trivial residual risk; mitigation depends on operational discipline (key custody, monitoring).
+- **Low** — bounded residual risk; protocol-level invariants still hold.
+- **Low–Med** — bounded *protocol* risk but non-trivial *user* impact in edge cases.
+- **Info** — design transparency; no residual risk beyond what is inherent to the chosen primitive.
+
+The catalog is stable across drafts: AD numbers do not change once assigned (see §4.X forward-references). New entries append; existing entries are not renumbered.
+
+### AD-01 — *Reserved*
+
+This slot is intentionally held open for the highest-priority finding to surface during external audit. If the audit firm flags a Critical / High issue that requires a design acceptance (rather than a code fix), it will be documented here. As of Draft 0.3 no such item exists; the slot is reserved to keep the AD-02..AD-NN numbering stable across audit revisions.
+
+### AD-02 — ScamRegistry pause response window relies on 48 h Timelock
+
+**Severity:** Low
+
+**Affected contracts / functions:**
+- `ScamRegistry.pause()`, `ScamRegistry.unpause()` — gated by `PAUSER_ROLE`
+- `ScamRegistry.setStatus(...)`, `ScamRegistry.setStatusBatch(...)` — `whenNotPaused`
+- Downstream: `GarbageCollector.cleanupBatch` scam pre-check loop (§4.5.5 step 1.3)
+
+**Decision:** Do not add an `EMERGENCY_ROLE` (or equivalent fast-pause backup) to ScamRegistry. After Phase B.5, `PAUSER_ROLE` is held only by the Timelock; any pause therefore requires a Governor proposal subject to the full 48 h Timelock delay.
+
+**Rationale:** ScamRegistry holds zero funds. Its on-chain surface is a classification mapping plus monotonic counters — there is no balance to drain, no immediate user loss vector. The cost of an EMERGENCY backup is an extra role, an extra multisig to provision, and a permanent governance attack surface for that multisig. The benefit (faster pause for a contract that cannot lose funds) does not justify the cost.
+
+**Risk / trade-off:** Up to 48 h of attacker-controlled writes if `ORACLE_ROLE` is compromised before the Timelock proposal to revoke executes. During that window:
+- *False positives:* mis-flagged-as-Scam tokens DoS the `GarbageCollector` swap gate. Users hold the affected token and route via `sendScamToLandfill` until the proposal executes.
+- *False negatives:* mis-flagged-as-Legit malicious tokens slip past the gate into `cleanupBatch`. ReentrancyGuard + CEI + swap-fail fallback bound user loss to the swap output of that single batch.
+
+**Mitigation / operational control:** `ORACLE_ROLE` is revocable by `DEFAULT_ADMIN_ROLE` (= Timelock) via a standard `revokeRole(ORACLE_ROLE, compromisedKey)` DAO proposal. Every `setStatus` call increments a monotonic per-token `reportCount` (I-05), providing an on-chain tamper trail that off-chain monitoring can sample for anomaly detection. A pause proposal and a role-revocation proposal can be queued in the same Timelock batch.
+
+**Residual risk accepted:** Up to 48 h of stale or malicious classifications across the on-chain registry. Bounded user impact per the False-positive / False-negative analysis above.
+
+**Cross-reference:** §4.2.4 (Roles), §5.3 (pause-window asymmetry), §9 (oracle trust analysis), §13 (incident playbook for `ORACLE_ROLE` compromise).
+
+---
+
+### AD-03 — LandfillVault emitted-amount vs on-chain delta drift for fee-on-transfer tokens
+
+**Severity:** Low
+
+**Affected contracts / functions:**
+- `LandfillVault.transferToken(token, to, amount)` — emits `TokenTransferred(token, to, amount)` using the *requested* `amount`.
+- `LandfillVault.burnToken(token, amount)` — emits `TokenBurned(token, amount)` using the *requested* `amount`.
+- `LandfillVault.emergencyWithdraw(token, to)` — uses `balanceOf` directly, so not affected; included for completeness.
+
+**Decision:** Do not implement `balanceBefore` / `balanceAfter` delta measurement in the vault's outbound paths. Emitted-event amount fields use the function argument, not the post-transfer on-chain delta. The contract's authoritative state is `balanceOf(vault, token)`, not the event stream.
+
+**Rationale:** The "balance-of-reality" pattern keeps the vault's storage minimal and gas-cheap (no extra SLOADs around each transfer). Indexers and dashboards consuming vault state are expected to query `balanceOf` for authoritative figures, treating events as activity hints rather than balance arithmetic. Fee-on-transfer tokens are a long-tail of the ERC-20 ecosystem (well under 1% by volume on BSC); a generic FoT-aware vault would impose a flat per-operation gas tax to handle them.
+
+**Risk / trade-off:** Off-chain consumers that sum `TokenTransferred.amount` and `TokenBurned.amount` per token will overstate vault outflow for FoT tokens by the per-transfer fee rate (typically 1–10%). I-08 (`balanceOf == sum_received − sum_movedOut`) is captioned with this caveat: it holds for non-FoT tokens; FoT tokens require the balance-of-reality reading.
+
+**Mitigation / operational control:** Documented inline at `LandfillVault.sol` and in §4.3.6. Indexer documentation (when shipped — Phase 3 frontend) must surface the FoT caveat. Vault `balanceOf` is always authoritative for treasury accounting; event-summed numbers are advisory.
+
+**Residual risk accepted:** Per-token event-arithmetic error of up to the FoT fee rate for any FoT token that lands in the vault. Aggregate cap is `balanceOf(vault, token)`, which cannot be inflated by event drift. No protocol-level invariant is violated.
+
+**Cross-reference:** §4.3.6, §4.3.13 (no FoT coverage in current test suite — recommended for audit-firm fork fixtures), §6 invariant I-08 caveat.
+
+---
+
+### AD-04 — LandfillVault role separation collapsed at deploy (all roles → Timelock)
+
+**Severity:** Low
+
+**Affected contracts / functions:**
+- `LandfillVault` Phase A.4 deploy and Phase B.5 cutover.
+- `DEFAULT_ADMIN_ROLE`, `DAO_ROLE`, `EMERGENCY_ROLE`, `PAUSER_ROLE` — all granted to the same address (the Timelock) post-B.5.
+
+**Decision:** Use a single Timelock holder for all four LandfillVault roles in v0.2.x deployment. The original architecture intent (per `scripts/deployLandfillVault.js:L67` inline note) was a dedicated separate multisig for `EMERGENCY_ROLE`, providing fast-circuit-breaker authority distinct from the DAO governance path. The deployment script consolidates them for v0.2 simplicity.
+
+**Rationale:** v0.2 deployment scope explicitly excludes a separate multisig — provisioning, key custody, signer onboarding, and multisig contract auditing are all out of scope for the initial Phase B.5 cutover. The architectural intent is preserved: `EMERGENCY_ROLE` is a distinct role on the contract, just temporarily held by the same address as the other three. Upgrading to a separate multisig is a single DAO proposal away (grant `EMERGENCY_ROLE` to multisig, revoke from Timelock).
+
+**Risk / trade-off:** The fast-circuit-breaker advantage of `EMERGENCY_ROLE` (bypasses pause; can sweep vault even when paused) is reduced because invoking it still requires a Timelock proposal with the full 48 h delay. The architectural separation exists at the role level but not the operational level — a Timelock proposal exploit could in principle target `emergencyWithdraw` directly.
+
+**Mitigation / operational control:** All four roles share the same governance gate (Timelock + 48 h), so the *practical* attack surface is the same as for any DAO admin function: a malicious proposal must pass Governor vote + queue + execute. The `EMERGENCY_ROLE` capability is documented in §4.3.4 with its intended (post-upgrade) operational separation.
+
+**Residual risk accepted:** No multi-sig fast-pause architecture is in place for the vault in v0.2.x. The intended diversity benefit (multisig holder distinct from Governor / Timelock holders) is deferred. To upgrade: provision multisig, schedule a Timelock proposal that calls `grantRole(EMERGENCY_ROLE, multisig)` + `revokeRole(EMERGENCY_ROLE, timelock)` — single batched action, ~48 h to execute.
+
+**Cross-reference:** §4.3.4 (LandfillVault roles), §5.3 (pause-window asymmetry note), `scripts/transferAdminRoles.js:30`, deploy-script inline note at `scripts/deployLandfillVault.js:L67`.
+
+---
+
+### AD-05 — CleanupMining divide-before-multiply pattern
+
+**Severity:** Info
+
+**Affected contracts / functions:**
+- `CleanupMining.calculateReward(...)` body, lines L182–186 (paired Slither suppression `divide-before-multiply`).
+- Comment block at L24: `reward = (baseRate × cleanupValueUSD × tierMult × epochMult) / 1e54`.
+
+**Decision:** Compute the reward by dividing by `1e18` three times sequentially during the multiplication chain, rather than multiplying all four factors first and dividing by `1e54` at the end. The literal "multiply-then-divide" form is the mathematically equivalent reference; the implementation is the divide-early form.
+
+**Rationale:** All four input factors are 1e18-scaled (`baseRate`, `cleanupValueUSD`, `tierMult`, `epochMult` ∈ [`0.125e18`..`1000e18`]). The product `baseRate × cleanupValueUSD × tierMult × epochMult` overflows `uint256` (≈ `1.16 × 10⁷⁷`) for any `cleanupValueUSD ≥ ≈ $2,000`. The divide-early form caps each intermediate at a known-safe magnitude (each division by `1e18` restores the scale before the next multiplication), keeping every intermediate well below `uint256.max`.
+
+**Risk / trade-off:** Truncation rounding occurs at each intermediate division. For inputs that are all 1e18-scaled (which they always are in this contract), the truncation error per division is sub-wei.
+
+**Mitigation / operational control:** Inline `// slither-disable-start divide-before-multiply` block documents the rationale at `CleanupMining.sol:L182-186`. The §16 Appendix C (pending §16 draft) will provide the full overflow derivation. Foundry fuzz test `testFuzz_rewardScalesLinearlyWithValue` exercises the formula across a wide value range; the implementation matches the linear-scaling property within rounding tolerance.
+
+**Residual risk accepted:** Per-cleanup reward may be rounded down by up to ≈ 3 wei (one per division step). Aggregate underpayment across the protocol lifetime is bounded by `3 × total_cleanups`, which is operationally invisible (≈ 1e9 cleanups × 3 wei ≪ 1 GOTT).
+
+**Cross-reference:** §4.4.10 (CleanupMining math sanity check), §4.4.12 (Slither suppression rationale), §16 Appendix C (pending — full derivation).
+
+---
+
+### AD-06 — GuardiansToken UTC mint-bucket timestamp granularity
+
+**Severity:** Info
+
+**Affected contracts / functions:**
+- `GuardiansToken.mintReward(...)` — uses `block.timestamp / 1 days` as the key into `mintedPerDay`.
+- `mintedPerDay` storage mapping.
+
+**Decision:** Bucket the daily mint cap by canonical EVM-day (`block.timestamp / 86400`). Boundaries roll over at UTC midnight, not project-local midnight. No caller-supplied epoch parameter, no separate per-day-checkpoint state.
+
+**Rationale:** Cheap (single `/ 1 days` integer division), unambiguous (UTC has no DST), and matches the on-chain convention for daily-bucket primitives across the OZ ecosystem. The protocol is Indonesia-first (UTC+7); the team accepted UTC midnight rather than a custom WIB-midnight bucket because (a) Solidity has no timezone, (b) UTC matches all external indexers and observability tools, and (c) a custom WIB bucket would require a hard-coded `+25,200s` offset that future timezone changes (DST or government time changes) could invalidate.
+
+**Risk / trade-off:** BSC validators can shift `block.timestamp` by up to ~15 seconds without immediate consensus rejection. A transaction submitted near the UTC-midnight boundary may be attributed to either day depending on the inclusion block's stamp.
+
+**Mitigation / operational control:** The daily cap is large enough that edge-of-day variance is negligible: `MAX_MINT_PER_DAY = 1.4M GOTT`, and the validator-controllable window is `~15s` out of `86,400s` (~0.017% of the day). In the worst case, an attacker who somehow times all their cleanups for the last 15 seconds before midnight could fit two days' worth of mints into a single 15-second window if validator collusion is assumed — but this requires both (i) the daily cap to be otherwise binding and (ii) validator collusion to manipulate timestamps, both of which are independently bounded.
+
+**Residual risk accepted:** Up to ~15 seconds of validator-influenced day attribution per UTC-midnight crossing. The token's mint flow remains capped per day under all realistic operating assumptions.
+
+**Cross-reference:** §3.4 (off-chain dependencies — validator timestamp assumption), §4.1 (GuardiansToken).
+
+---
+
+### AD-07 — `oracleSigner` single-key risk
+
+**Severity:** Med
+
+**Affected contracts / functions:**
+- `GarbageCollector.cleanupBatch(...)` — every batch is authorised by an EIP-712 signature from `oracleSigner`.
+- `GarbageCollector.setOracleSigner(address)` — `onlyRole(ADMIN_ROLE)` rotation path.
+- `GarbageCollector.oracleSigner` — single mutable `address` (not an `AccessControl` role).
+- Downstream: `CleanupMining.recordCleanup` and `GuardiansToken.mintReward` (the reward path).
+
+**Decision:** For v0.2.x, a single externally-owned account holds the `oracleSigner` private key and signs every `CleanupAuthorization`. The key is custodied by the Guardians backend service. Multi-sig signature aggregation (e.g., 2-of-3 backend signers) is deferred to v0.3+.
+
+**Rationale:** Multi-sig signer aggregation requires (a) frontend coordination to collect signatures from multiple endpoints before submitting `cleanupBatch`, (b) backend infrastructure to run multiple signer endpoints with HSM/KMS-managed keys per endpoint, and (c) signature-set encoding inside the existing EIP-712 payload. All three are non-trivial; none are required to ship v0.2.x. The Phase B.5 Timelock (with 48 h rotation delay) is the load-bearing rotation primitive — a compromised key is not a permanent compromise.
+
+**Risk / trade-off:** A compromised `oracleSigner` private key can forge `CleanupAuthorization` signatures for arbitrary `cleanupValueUSD`, minting unlimited GOTT bounded only by the downstream `MAX_MINT_PER_DAY` cap (1.4M GOTT, §4.1.10). Across the maximum 48 h Timelock rotation window, the upper bound on forgeable mint is **2 days × 1.4M = 2.8M GOTT ≈ 0.28 % of MAX_SUPPLY (1B)**. The attacker would also need to control or coordinate with `msg.sender` addresses, since the signed digest binds `msg.sender` (§4.5.6 internal helpers).
+
+**Mitigation / operational control:**
+- Backend key custody via HSM / cloud KMS (operational, not on-chain).
+- Real-time monitoring of `RewardCalculated` events from CleanupMining + `Transfer` events from GuardiansToken — deviation from the expected mining curve (per §4.4.4 epoch table) flags an anomaly within minutes.
+- Rotation path: `setOracleSigner(newSigner)` proposed by Governor + queued by Timelock (48 h). The protocol-level rotation cap is therefore 48 h between detection and freeze.
+- Per-user nonce + deadline on the signed authorization means signatures pre-signed before the compromise cannot be reused after the user's nonce advances; signatures forged *during* the compromise window expire at their `deadline` field (typically minutes to hours).
+- Optional faster path: `pause()` the GarbageCollector via `PAUSER_ROLE` (also held by Timelock — 48 h delay applies) suspends all `cleanupBatch` calls without rotating the key. Combine pause + key rotation in one batched proposal.
+
+**Residual risk accepted:** Up to 2.8M GOTT forgeable mint during the worst-case 48 h incident-response window (detection latency + Timelock rotation delay). User-fund impact is zero (forged mint diverts emission to the attacker's address; existing GOTT holdings are unaffected). The 0.28 % of MAX_SUPPLY cap is the load-bearing protocol-level bound.
+
+**Cross-reference:** §4.5.4 (Roles + single-key risk callout), §4.5.6 (`_verifyAndConsumeAuth` audit checkpoints), §5.3 (hot-key table — first row), §9 (full trust analysis — pending §9 draft), §13 (incident playbook — pending §13 draft).
+
+---
+
+### AD-08 — Swap-fail fallback forwards token to LandfillVault without BNB refund
+
+**Severity:** Low–Med
+
+**Affected contracts / functions:**
+- `GarbageCollector._swapTokenToBNB(token, amount, from)` `catch` branch (`GarbageCollector.sol:L303-308`).
+- `GarbageCollector.cleanupBatch(...)` — calls `_swapTokenToBNB` per token; aggregates BNB via `address(this).balance` delta.
+- Emits `SwapFallbackToLandfill(user, token, amount)` per failed swap (one event per token).
+
+**Decision:** On `swapExactTokensForETH` revert, the catch branch resets the router approval to zero and forwards the user's token amount to `landfillVault` instead of propagating the revert to the batch level. The reward bookkeeping (`miningContract.recordCleanup`) still proceeds using the full `cleanupValueUSD` signed by the oracle.
+
+**Rationale:** Per-token revert that propagated to the batch level would (i) burn the user's gas for any tokens that successfully swapped earlier in the same batch, and (ii) require the user to re-sign a fresh EIP-712 authorization with a fresh nonce to retry. The fallback-to-landfill behaviour preserves the working portion of the batch and emits a clear event so frontends can inform the user.
+
+**Risk / trade-off:** A user whose token fails to swap loses that token to the vault but receives no BNB refund for it. They are still charged for that token's notional value in the `cleanupValueUSD` total (the oracle signed the entire batch as a single sum). In the worst case — 1 token succeeds (above `minBnbOut`), N tokens fail — the user effectively pays the asset cost of N tokens for the BNB output of 1.
+
+**Mitigation / operational control:**
+- Batch-level `minBnbOut` is the user's primary safety net: if the aggregate BNB across all successful swaps falls below `minBnbOut`, the whole batch reverts and all token transfers (including the failed-to-landfill forwards) are restored by EVM revert semantics.
+- Frontend responsibility: estimate per-token swap likelihood at sign time and present a realistic `minBnbOut`. Tokens with known liquidity issues should be routed via `sendScamToLandfill` (no reward, no oracle signature) instead.
+- `SwapFallbackToLandfill` event allows off-chain refund decisions (manual treasury restitution from `landfillVault` via DAO proposal).
+- Per-token slippage cap (AD-09) is the architectural future direction; deferred to v0.3+ due to EIP-712 payload constraints.
+
+**Residual risk accepted:** Pathological-case user UX failure where the user loses most of a batch's token value to landfill without proportional BNB output. Bounded by `minBnbOut`. Frontend documentation must surface this trade-off; mid-term hardening is per-token slippage caps in v0.3+.
+
+**Cross-reference:** §4.5.6 (`_swapTokenToBNB` audit checkpoints), §4.5.13 (no fork-test against real PancakeRouter — coverage gap), §11 Gas & DoS surface (pending §11 draft).
+
+---
+
+### AD-09 — Per-token slippage = 0; batch-level `minBnbOut` is the sole slippage guard
+
+**Severity:** Info
+
+**Affected contracts / functions:**
+- `GarbageCollector._swapTokenToBNB(...)` `router.swapExactTokensForETH(amount, 0, path, ...)` call (`GarbageCollector.sol:L297` — second argument is `amountOutMin = 0`).
+- `GarbageCollector.cleanupBatch(...)` `totalBnbReceived < minBnbOut` check at `GarbageCollector.sol:L204`.
+
+**Decision:** Set the per-token `amountOutMin` parameter on every Pancake router call to zero. Slippage protection is enforced only at the batch level, via the user-supplied `minBnbOut` against the post-swap `address(this).balance` delta.
+
+**Rationale:** A per-token slippage cap requires a per-token USD quote computed at signature time. The current `CleanupAuthorization` EIP-712 payload commits only to the aggregate `cleanupValueUSD`; adding per-token caps would require either (i) extending the payload to carry an `expectedBnbOut[]` parallel array (increasing signed-data size linearly with batch size and complicating the off-chain signer service), or (ii) deriving per-token caps from the aggregate at sign time (which loses the per-token granularity benefit). The chosen design treats `minBnbOut` as the user's risk-tolerance knob; the frontend computes a realistic value from live routing quotes.
+
+**Risk / trade-off:** A targeted MEV sandwich attack on a single token in a batch can push that token's BNB output to near-zero. The batch survives only if the remaining tokens overproduce BNB sufficient to clear `minBnbOut` (in which case the attacker captures the sandwiched portion but the batch still completes with reduced output).
+
+**Mitigation / operational control:**
+- Frontend computes `minBnbOut` from realistic per-block routing quotes including a 1–2 % slippage tolerance margin.
+- Users with low risk tolerance can lower `minBnbOut` further at the cost of higher revert probability under adverse routing conditions.
+- High-MEV-risk tokens (e.g., low-liquidity longtails) are observably routable via `sendScamToLandfill` to avoid the swap path entirely.
+
+**Residual risk accepted:** Per-token sandwich-attack exposure bounded only by the aggregate `minBnbOut`. Future hardening = per-token slippage caps in signed metadata (v0.3+ depending on EIP-712 payload-size trade-off vs frontend complexity).
+
+**Cross-reference:** §4.5.6 (`_swapTokenToBNB` audit notes), AD-08 (linked failure mode).
+
+---
+
+### AD-10 — Timelock open executor (`executors = [address(0)]`)
+
+**Severity:** Info
+
+**Affected contracts / functions:**
+- `GuardiansTimelockController` constructor at Phase B.1.
+- `EXECUTOR_ROLE` granted to `address(0)` — OZ `TimelockController` short-circuits the `onlyRoleOrOpenRole(EXECUTOR_ROLE)` gate when `hasRole(EXECUTOR_ROLE, address(0))` is true.
+
+**Decision:** Pass `executors = [address(0)]` to the `TimelockController` constructor. After a proposal has been queued by the Governor and its 48 h delay has elapsed, `execute(...)` and `executeBatch(...)` are callable by any address.
+
+**Rationale:** This is the OZ-recommended pattern for public DAOs (per the v5.1.0 docs and the Governor reference deployments). Removing executor-role gating means the protocol does not depend on a single designated relayer key for liveness — any community member, MEV searcher, or watcher bot can execute a queued proposal once its delay expires. Reducing liveness dependence to "any rational actor with gas" is strictly better than depending on a specific relayer.
+
+**Risk / trade-off:** Once a malicious proposal has passed Governor vote *and* survived the 48 h Timelock queue, no further gating exists between queue expiry and execution. The "open execution" is therefore the absence of a *post-approval* checkpoint, not the absence of a *pre-approval* checkpoint — the vote + queue gates remain fully in force.
+
+**Mitigation / operational control:**
+- The 48 h Timelock queue is the load-bearing review window. The community (and the audit firm, post-deployment) has 48 h to inspect every queued proposal's payload for malicious intent.
+- `CANCELLER_ROLE` is held by the Governor (granted at Phase B.4); a separate Governor proposal can cancel a queued op before its delay expires. Cancellation is a separate vote, but the 48 h window is generous enough to organize one.
+- Bug-bounty scope (Phase 4.5) is expected to cover "malicious-but-passed proposal" scenarios.
+
+**Residual risk accepted:** No checkpoint between Timelock queue expiry and execution. Risk is fully mitigated only if the vote + queue + community-watch system detects malicious proposals during the queue window. This is the canonical OZ-DAO trust model.
+
+**Cross-reference:** §4.6.4 (Timelock roles), §5.2 (matrix), §13 Emergency Response (pending §13 — incident playbook for "malicious proposal nears execution").
+
+---
+
+### AD-11 — BSC block-time variance shifts effective Governor voting window
+
+**Severity:** Info
+
+**Affected contracts / functions:**
+- `GuardiansGovernor` constructor parameters: `votingDelay = 28,800` blocks, `votingPeriod = 201,600` blocks.
+- Inherited `Governor.clock()` returns `block.number` (because `GuardiansToken.clock()` uses the OZ v5 default, see §4.1.2).
+
+**Decision:** Use the OZ v5 default block-number clock for governance time-keeping. Voting periods are denominated in BSC blocks. The nominal conversion `28,800 blocks ≈ 1 day` and `201,600 blocks ≈ 7 days` assumes BSC's design-target 3-second block time.
+
+**Rationale:** Switching to a timestamp-based clock (ERC-6372 `CLOCK_MODE`) would require GuardiansToken to override its clock mode, propagating to every Votes-based contract that reads from the token. The block-number clock matches BSC's canonical voting denomination and avoids timestamp-manipulation surface (timestamps are validator-controllable by ~15 s; block numbers are not).
+
+**Risk / trade-off:** BSC block production is bounded but variable — historically observed between ~2.5 s (light load) and ~4 s (congestion). At 2.5 s/block, `201,600 blocks ≈ 5.8 days`. At 4 s/block, `201,600 blocks ≈ 9.3 days`. The effective wall-clock voting window therefore varies by approximately **±20–30 %** around the 7-day target.
+
+**Mitigation / operational control:**
+- The 7-day voting period is generously sized — even at the high end (~9.3 days) it is operationally manageable; even at the low end (~5.8 days) it leaves time for vote organization.
+- The 1-day voting delay (28,800 blocks) similarly varies ~0.83–1.33 days, providing proposers a buffer window for off-chain pre-vote coordination.
+- Frontend / governance UI should display *block-number deadlines* alongside best-effort wall-clock estimates, reminding voters that the wall-clock end is approximate.
+
+**Residual risk accepted:** Effective voting wall-clock window shifts by ~24 % around the 7-day target across normal BSC operating conditions. Operationally tolerable for the expected DAO cadence (parameter changes, role rotations, treasury proposals — none of which are time-sensitive at the hour scale).
+
+**Cross-reference:** §4.7.10 (Governor immutables + BSC block-time assumption), §3.4 (off-chain dependencies — implicit BSC chain-time assumption).
+
+---
+
 
