@@ -2,7 +2,7 @@
 
 > **Status:** Pre-audit internal review. Intended for an external audit firm (SolidProof / Hacken tier) with no prior project context.
 > **Commit under review:** `8a80b35` (main).
-> **Document version:** Draft 0.7 — §4 + §5 + §6 + §7 + §9 + §10 complete; test counts reconciled (193 Hardhat + 54 Foundry); §8, §11, §12, §13, §14, §15, §16, §1 pending.
+> **Document version:** Draft 0.8 — §4 + §5 + §6 + §7 + §9 + §10 + §11 complete; test counts reconciled (193 Hardhat + 54 Foundry); §8, §12, §13, §14, §15, §16, §1 pending.
 
 ---
 
@@ -16,7 +16,7 @@
 
 This section tracks the internal drafting state. It is **not** part of the deliverable to the audit firm; it will be deleted in the Draft 1.0 cut.
 
-### Done in this revision (Draft 0.7)
+### Done in this revision (Draft 0.8)
 
 | Section | Status | Notes |
 |---|---|---|
@@ -34,20 +34,20 @@ This section tracks the internal drafting state. It is **not** part of the deliv
 | §7 External Call Graph | ✅ Complete | 10 sub-sections (§7.1-§7.10). §7.1 reading guide (6 call classes), §7.2 ASCII high-level graphs (3: cleanup engine, landfill path, governance), §7.3 11-step `cleanupBatch` table, §7.4 `sendScamToLandfill` path, §7.5 mining-reward atomicity caveat (EVM revert propagation through DEX swaps in the same tx), §7.6 swap-fail fallback (try/catch scope explicit), §7.7 governance/Timelock pipeline, §7.8 admin/role transfer bootstrap calls, §7.9 20-row consolidated external-call inventory, §7.10 14-row revert/atomicity summary. Single "NO (caught)" row in §7.10 = router swap revert via try/catch; every other failure reverts the whole tx. |
 | §9 Trust Assumptions & Oracle Surface | ✅ Complete | §9.1 Trust Model Overview (four trust classes), §9.2 Hot-Key Surface Summary (5-row table), §9.3 oracleSigner deep-dive, §9.4 ORACLE_ROLE deep-dive, §9.5 PancakeRouter / WBNB boundary, §9.6 User-Supplied ERC-20 boundary, §9.7 Governance / Timelock boundary, §9.8 Bootstrap Trust Window, §9.9 Consolidated Trust Assumption Matrix. Operational vs on-chain controls explicitly labelled throughout. |
 | §10 Acknowledged Design Decisions (body) | ✅ Complete | AD-02..AD-11 drafted using the 9-element format (Title / Severity / Affected / Decision / Rationale / Risk / Mitigation / Residual / Cross-ref). AD-01 reserved for the highest-priority external-audit finding. Severities: AD-02..AD-04 Low, AD-05/AD-06/AD-09/AD-10/AD-11 Info, AD-07 Med, AD-08 Low–Med. |
+| §11 Gas & DoS Surface | ✅ Complete | 13 sub-sections (§11.1-§11.13). §11.2 7-row loop inventory (only the GC scam pre-check + swap loops have hard caps; `setStatusBatch` + `sendScamToLandfill` + `distributeInitial` are caller-discipline-bounded). §11.3 GC gas profile decomposition. §11.4 user-supplied ERC-20 grief modes. §11.10 PancakeRouter unavailability response. §11.11 BNB payout-fail user-local DoS. §11.12 14-row DoS classification matrix (single fund-at-risk row = AD-07 oracleSigner compromise). §11.13 7-item audit-request list (fork tests, FoT/rebasing coverage, optional `maxBatchSize`, frontend gas estimator, proposal hygiene, I-15 handler, I-17 E2E test). |
 | Test count reconciliation | ✅ Done | **193 Hardhat + 54 Foundry = 247 total, 100% pass.** Run output: 0 failed, 0 skipped. Earlier 167+35 scan was undercount; PR-claimed 193+54 verified. Per-file: GuardiansToken 40/11, ScamRegistry 29/9, LandfillVault 27/10, CleanupMining 38/10, GarbageCollector 32/9, Governance 15/5, RoleTransfer 12/—. |
 
 ### Pending sections (planned order)
 
 | Order | Section | Estimated complexity | Blocker / dependency |
 |---|---|---|---|
-| 1 | §11 Gas & DoS Surface | Medium — covers `MAX_TOKENS_HARD_CAP = 50`, the per-batch loops in `cleanupBatch`, registry write fan-out | Benefits from real-token fork tests (§4.5.13 gap). |
-| 2 | §8 Storage Layout & Upgrade Story | Low — protocol is non-upgradeable; section states this and walks each contract's storage layout for completeness | None. |
-| 3 | §13 Emergency Response | Medium — playbook for AD-07 (oracle key compromise), AD-02 (ORACLE_ROLE compromise), router incident, Timelock-stuck proposal, paused-vault recovery | §9 + §10 already drafted. |
-| 4 | §14 Test Coverage Summary | Low — write up the verified 193+54 numbers + coverage-gap rollup from §4.X.13 cells | Test counts already verified. |
-| 5 | §15 Out of Scope | Low — short list (off-chain signer infra, ORACLE_ROLE keeper service, frontend) | None. |
-| 6 | §16 Appendices (Glossary, EIP-712, Reward Formula derivation, Build & Reproducibility, Repo refs) | Medium | Reward-formula derivation pulls from §4.4.12 inline rationale + AD-05. |
-| 7 | §12 Deployment Reference | Low — short stub + link to `docs/DEPLOYMENT.md` | **Blocker: `docs/DEPLOYMENT.md` does not yet exist.** Create alongside §12 drafting. |
-| 8 | §1 Document Purpose | Low | Write **last**, after every other section is final. |
+| 1 | §8 Storage Layout & Upgrade Story | Low — protocol is non-upgradeable; section states this and walks each contract's storage layout for completeness | None. |
+| 2 | §13 Emergency Response | Medium — playbook for AD-07 (oracle key compromise), AD-02 (ORACLE_ROLE compromise), router incident, Timelock-stuck proposal, paused-vault recovery | §9 + §10 + §11 already drafted. |
+| 3 | §14 Test Coverage Summary | Low — write up the verified 193+54 numbers + coverage-gap rollup from §4.X.13 cells | Test counts already verified. |
+| 4 | §15 Out of Scope | Low — short list (off-chain signer infra, ORACLE_ROLE keeper service, frontend) | None. |
+| 5 | §16 Appendices (Glossary, EIP-712, Reward Formula derivation, Build & Reproducibility, Repo refs) | Medium | Reward-formula derivation pulls from §4.4.12 inline rationale + AD-05. |
+| 6 | §12 Deployment Reference | Low — short stub + link to `docs/DEPLOYMENT.md` | **Blocker: `docs/DEPLOYMENT.md` does not yet exist.** Create alongside §12 drafting. |
+| 7 | §1 Document Purpose | Low | Write **last**, after every other section is final. |
 
 ### Design acceptances catalog (§10 body now drafted — all severities user-ack'd)
 
@@ -2910,6 +2910,253 @@ This slot is intentionally held open for the highest-priority finding to surface
 **Residual risk accepted:** Effective voting wall-clock window shifts by ~24 % around the 7-day target across normal BSC operating conditions. Operationally tolerable for the expected DAO cadence (parameter changes, role rotations, treasury proposals — none of which are time-sensitive at the hour scale).
 
 **Cross-reference:** §4.7.10 (Governor immutables + BSC block-time assumption), §3.4 (off-chain dependencies — implicit BSC chain-time assumption).
+
+---
+
+## §11 Gas & DoS Surface
+
+### §11.1 Scope and Threat Model
+
+This section enumerates every loop, gas-sensitive path, external-call dependency, and atomicity surface that could be exploited to deny service or to grief users with wasted gas. Each item is classified by scope:
+
+| Scope | Definition | Example |
+|---|---|---|
+| **User-local** | Failure affects only the calling user's transaction. Gas is lost; no other user, no protocol state is impacted. | A hostile ERC-20 reverts inside the user's `cleanupBatch`; the user's tx reverts, other users are unaffected. |
+| **Role-local** | Failure affects only operations gated by a specific role; non-role actions continue. | `ORACLE_ROLE` keeper submits a batch too large for block gas; `setStatusBatch` reverts, but `cleanupBatch` and other contracts are unaffected. |
+| **Protocol-global** | Failure halts a contract-wide capability for all users until resolved. | `GarbageCollector` paused → no user can call `cleanupBatch` until governance unpauses. |
+| **Governance** | Failure inside a Governor proposal's execution. | A queued proposal's target call reverts; `executeBatch` reverts; the proposal stays in `Queued` state until re-attempted. |
+| **External protocol** | A deployed contract the protocol depends on becomes unavailable or misbehaves. | PancakeRouter v2 is paused or deprecated; per-token swaps fail; batches fall back to landfill or revert on aggregate `minBnbOut`. |
+
+**Not every revert is a vulnerability.** Several reverts in the protocol are intentional safety halts: `MAX_SUPPLY` overflow (I-01), daily-cap overflow (I-02), `whenNotPaused` gates, role checks. These should not be conflated with DoS — they are the protocol functioning correctly. This section focuses on reverts that are *unintended* failure modes or *intended* failure modes whose blast radius the audit firm should verify.
+
+### §11.2 Loop Inventory
+
+Every loop in the protocol, with explicit bound and gas-control owner.
+
+| Contract / function | Loop over | Max bound | Length controlled by | External calls inside? | DoS risk | Mitigation / cross-ref |
+|---|---|---|---|---|---|---|
+| `GuardiansToken.distributeInitial` (`GuardiansToken.sol:L115` validation loop + `L127` mint loop) | `recipients[]` | **No hard cap** | Admin / `DEFAULT_ADMIN_ROLE` (deployer at TGE, one-shot) | mint loop: internal `_mint` only (no external) | Admin-supplied; one-shot at TGE — if admin batches too many recipients in one tx, the call reverts on block gas, but no state changes (I-03 keeps `initialized = false`). Admin can retry with smaller chunks. | One-shot guard (I-03) + admin-only — not a runtime user-facing path. |
+| `ScamRegistry.setStatusBatch` (`ScamRegistry.sol:L100`) | `tokens[]` × `statuses[]` | **No hard cap** | `ORACLE_ROLE` keeper | per-iteration: only internal `_setStatus` (no external calls) | Operator-controlled gas — if the keeper submits a batch too large for block gas, the call reverts; no funds at risk; classifications already on-chain are unaffected. | Operational discipline (chunk large updates). Audit firm may request a `maxBatchSize` parameter — see §11.5 and §11.13. |
+| `GarbageCollector.cleanupBatch` scam pre-check loop (`GarbageCollector.sol:L194`) | `tokens[]` | **`maxTokensPerCleanup` ≤ `MAX_TOKENS_HARD_CAP` = 50** | User-supplied `tokens[]`, bounded by `maxTokensPerCleanup` (default 20) | Yes — `ScamRegistry.isScamOrDrainer(token)` per iteration (view) | Bounded by `MAX_TOKENS_HARD_CAP`. Per-iteration call is a single-SLOAD view (§4.2.6); 50 × cheap view + arithmetic stays well below BSC's 30M block gas. | §4.5.5, §4.5.10 (hard cap rationale), `// slither-disable-next-line calls-loop` at L195. |
+| `GarbageCollector.cleanupBatch` swap loop (`GarbageCollector.sol:L200`) | `tokens[]` | Same — bounded by `maxTokensPerCleanup` ≤ 50 | Same | Yes — `safeTransferFrom`, `forceApprove`, `swapExactTokensForETH`, and on revert `forceApprove(router, 0)` + `safeTransfer(landfillVault)` | Bounded by hard cap, but per-iteration cost is dominated by router + token. A 50-token batch with adversarial-gas tokens is the protocol's worst-case `cleanupBatch` gas profile. | §4.5.6, AD-09; recommended fork-test against real BSC PancakeRouter v2 with diverse tokens (§4.5.13 gap, §11.13). |
+| `GarbageCollector.sendScamToLandfill` (`GarbageCollector.sol:L269`) | `tokens[]` × `amounts[]` | **No hard cap** (only empty / length-mismatch checks) | User-supplied | Yes — `safeTransferFrom` per iteration | User pays their own gas. If the user submits a batch too large for block gas, the call reverts with no state change. | User-local gas loss only — protocol-level state is never partially mutated because EVM revert unwinds all per-token transfers. §7.4 |
+| `LandfillVault.*` | — | — | — | — | **No loops in the vault.** All outbound operations are one-token-per-call. | §4.3.6 |
+| `CleanupMining.recordCleanup` | — | — | — | — | **No loops.** Constant-time reward computation + storage writes + single external `mintReward` call. | §4.4.6 |
+| `GuardiansTimelockController.executeBatch` (inherited OZ) | `targets[]` × `values[]` × `payloads[]` | **No hard cap** (OZ default) | Proposer (Governor) at queue time | Yes — one external call per target | Governance-scope DoS: a proposal that bundles too many operations may revert on block gas. | Operational — see §11.9. |
+
+**Patterns to note.**
+- **Two of the seven loops have a hard on-chain cap** (the two inside `cleanupBatch`). All other loops rely on the caller's discipline.
+- **No loop performs more than one external call per iteration except the swap loop**, and the swap loop is the one with the tightest cap.
+- **No loop in the protocol is over an unbounded on-chain set** (e.g., over all users, all tokens, etc.). Every loop iterates over a *caller-supplied* array; the worst case is the caller burns their own gas, not that the contract iterates indefinitely.
+
+### §11.3 GarbageCollector Batch Gas Surface
+
+`cleanupBatch` is the highest-gas path in the protocol. Its cost profile decomposes as:
+
+```
+total_gas ≈ fixed_overhead
+          + N × (scam_precheck_view + safeTransferFrom + forceApprove + router_swap)
+          + recordCleanup_overhead
+          + mintReward_overhead
+          + bnb_payout_overhead
+```
+
+where N = `tokens.length` ≤ `maxTokensPerCleanup` ≤ `MAX_TOKENS_HARD_CAP = 50`.
+
+**Two distinct loops on `tokens[]`, both bounded by the same `len`:**
+
+1. **Scam pre-check loop** (`GarbageCollector.sol:L194-197`) — single view call per token. Reverts the *whole* batch if any token is flagged. Cheap per iteration but reads from a different contract (cold-SLOAD on first access of each token's `TokenInfo` slot).
+2. **Swap loop** (`GarbageCollector.sol:L200-202`) — calls `_swapTokenToBNB` per token. Per-iteration cost is dominated by `PancakeRouter.swapExactTokensForETH` (typically 100k-200k gas on standard pairs, more for low-liquidity pairs that route through multiple pools).
+
+**Two structural caveats.**
+- Per-token cost is **not bounded by the contract** — it is bounded by the *token's* transfer implementation and the router's path complexity. A hostile token with a deliberately expensive `transfer` hook can blow up per-iteration gas. The user pays this cost. The protocol cannot guarantee `cleanupBatch` will fit in a block for adversarial tokens.
+- `minBnbOut` failure (§7.3 step 7) reverts the whole transaction **after** all per-token work has been done. This is **user-local gas loss**, not protocol-state corruption — but it is a real cost the user should be made aware of by the frontend before signing.
+
+**Hard cap rationale (§4.5.10).** `MAX_TOKENS_HARD_CAP = 50` was chosen so that even a 50-token batch with adversarial-cost tokens stays inside BSC's 30M block-gas limit by a comfortable margin (rough envelope: 50 × ~500k worst-case-per-token = 25M, still ≤ 30M). The runtime cap `maxTokensPerCleanup` defaults to 20 and is admin-settable up to the hard cap.
+
+**Cross-references.** §4.5.10 (immutables), §7.3 (call-graph), §7.6 (swap fallback), AD-08 (Low–Med, swap-fail UX), AD-09 (Info, per-token slippage = 0).
+
+### §11.4 User-Supplied ERC-20 Gas Griefing
+
+An arbitrary ERC-20 token passed to `cleanupBatch` or `sendScamToLandfill` can grief the user in several ways:
+
+| Token behaviour | Effect on `cleanupBatch` | Effect on `sendScamToLandfill` |
+|---|---|---|
+| `transferFrom` always reverts | safe-transferFrom step (§7.3 step 4) reverts → **whole batch reverts** (no try/catch on this path) | per-token `safeTransferFrom` reverts → **whole call reverts**, prior per-token transfers in the same call unwound |
+| `transferFrom` consumes 1M+ gas | per-token gas blows up; if total exceeds block gas, whole batch reverts; user pays the gas | same — user pays |
+| ERC-777 callback (`tokensToSend` / `tokensReceived`) | callback may re-enter the protocol; `nonReentrant` on `cleanupBatch` blocks re-entry into the same contract; cross-contract re-entry is not blocked but the protocol's external surface is shallow enough to make this hard to exploit | same — `nonReentrant` blocks re-entry |
+| Fee-on-transfer | `safeTransferFrom(user, gc, amount)` moves less than `amount` to the GC; subsequent `forceApprove(router, amount)` + `swapExactTokensForETH(amount, ...)` may revert because the GC's balance is less than `amount`. **Result: this token falls into the try/catch fallback path → sent to landfill.** | tokens forwarded directly to vault with fee deducted; vault accounting drifts (AD-03) |
+| Rebasing | `balanceOf(gc)` can grow or shrink between `safeTransferFrom` and `swap`. If it shrinks below `amount`, router reverts → catch branch → token forwarded to landfill | tokens forwarded; vault accounting drifts |
+| Reverts when `amount == 0` | per-iteration revert if batch contains a zero amount; both paths revert with no partial-state | same |
+
+**Mitigations layered in the protocol.**
+- `SafeERC20` (`forceApprove`, `safeTransferFrom`, `safeTransfer`) handles non-standard return values and USDT-style approve-race.
+- `nonReentrant` blocks re-entry on the calling contract path.
+- CEI ordering bounds the time window for any side-effect to land.
+- `maxTokensPerCleanup` bounds the per-batch gas budget.
+- Scam pre-check excludes known malicious tokens from the swap path.
+- The try/catch fallback (around the router call only — see §7.6) routes router-rejected tokens to landfill rather than reverting.
+
+**Limits.**
+- The protocol **cannot guarantee** a successful cleanup for an adversarial token.
+- Worst case is **user-local**: the user's transaction reverts (paying gas) or the user's token ends up in the landfill instead of swapped (AD-08).
+- **No protocol-global halt** is triggered by a hostile token — other users' `cleanupBatch` calls are unaffected by another user's hostile-token tx (each `cleanupBatch` reads `ScamRegistry` and operates on its own `tokens[]`).
+
+**Cross-references.** §9.6 (user-supplied token trust boundary), §14 (recommended FoT / rebasing / ERC-777 coverage), AD-03 / AD-08.
+
+### §11.5 ScamRegistry Batch Update Gas Surface
+
+`setStatusBatch(tokens[], statuses[])` loops over the input arrays. No on-chain max batch size. The role gate (`ORACLE_ROLE`) limits the caller to the off-chain keeper key.
+
+**Failure modes.**
+- A batch too large for block gas reverts; no state change.
+- A batch within block gas executes atomically — all classifications applied or none.
+- No funds are at risk in any case.
+
+**Why no on-chain `maxBatchSize`?** The `ORACLE_ROLE` is trusted (within the bounds described in §9.4 and AD-02) and operationally controlled. Adding a `maxBatchSize` parameter would (a) require a Governor proposal to tune, (b) add a code path to test, and (c) provide no protection that the keeper's own discipline doesn't already provide. **However, the audit firm may legitimately request this parameter** as a defence-in-depth measure if `ORACLE_ROLE` is ever held by a less-trusted multisig in the future.
+
+**Operational mitigations.**
+- Chunk large updates into multiple txs (e.g., 100 tokens per call). *Operational, not on-chain.*
+- Monitor `StatusUpdated` indexing throughput on the backend.
+- Future optional hardening: if the audit firm flags this as a finding, add `if (len > MAX_BATCH) revert OversizedBatch();` at the top of `setStatusBatch`. Single-line change.
+
+**Cross-references.** §4.2.6, §9.4, AD-02 (Low — pause response window).
+
+### §11.6 LandfillVault Gas / DoS Surface
+
+The vault has **no loops** in any of its operations:
+
+- `burnToken(token, amount)` — single `safeTransfer(0xdEaD, amount)`.
+- `transferToken(token, to, amount)` — single `safeTransfer(to, amount)`.
+- `emergencyWithdraw(token, to)` — single `safeTransfer(to, balanceOf(this))`.
+- `getBalance(token)` — single `balanceOf` view.
+
+**Failure modes are token-local.**
+- If a token's `transfer` reverts (e.g., paused token, blacklist), the vault's outbound call reverts. The vault's state is unchanged.
+- `emergencyWithdraw` may fail for the same reason. There is no protocol-level escape hatch if a token has decided to lock the vault's balance.
+
+**This is token-local DoS, not protocol-global.** Other tokens in the vault remain unaffected. A burn proposal for token A still succeeds even if token B's transfer is reverting.
+
+**FoT / rebasing caveat (AD-03).** For fee-on-transfer tokens, the vault's emitted-amount fields (`TokenBurned.amount`, `TokenTransferred.amount`) differ from the on-chain `balanceOf` delta. This is event-stream drift, not a DoS — the operation still succeeds; only the indexer view is approximate.
+
+**Cross-references.** §4.3, §6 I-08 (with AD-03 caveat), §9.6.
+
+### §11.7 CleanupMining Gas / DoS Surface
+
+`CleanupMining.recordCleanup` has **no loops**. Per-call work:
+
+1. Read `getCurrentEpoch()`, `getTierMultiplier(user, value)`, `calculateReward(...)` — all constant-time view computations.
+2. Storage writes: `totalRewardsEarned[user]`, `cleanupCountPerEpoch[user][epoch]`, `totalCleanupsExecuted`, `totalValueCleaned`, `lastCleanupTimestamp[user]`, `hasCleanedBefore[user]`. Five mappings + two scalars; deterministic constant cost.
+3. Single external call: `gott.mintReward(user, reward)`.
+
+**Per-call failure modes.**
+- `mintReward` reverts for any of: contract paused, `CLEANUP_MINER_ROLE` revoked, daily cap (I-02), max supply (I-01). All four are **intentional safety gates**, not gas DoS.
+- If `mintReward` reverts, `recordCleanup` reverts, and the calling `cleanupBatch` reverts (§7.5 atomicity caveat).
+
+**No gas-exhaustion path.** The function is deterministic and small enough that block-gas budget is never the binding constraint.
+
+**Cross-references.** §4.4, §7.5, I-01, I-02.
+
+### §11.8 GuardiansToken Gas / DoS Surface
+
+**`distributeInitial` loop (one-shot, admin-only).** Bounded by admin discretion at TGE. If the admin submits too many recipients in one call, the tx reverts on block gas and the `initialized` flag is never flipped (I-03) — admin can retry with smaller chunks. **Not a runtime user-facing surface.**
+
+**`mintReward` constant-time.** Two storage reads + arithmetic + one storage write + `_mint`. No loops.
+
+**`ERC20Votes` checkpoint cost on transfer.** Every `transfer` / `_mint` / `_burn` updates the source and destination's vote checkpoints (when delegated). The OZ v5.1.0 implementation uses `Checkpoints.Trace208` for `O(log n)` lookups but the *write* is `O(1)` amortised. **Transfers post-delegation are noticeably more expensive than pre-delegation** — typically +30-50k gas per transfer when both source and destination have delegated. This is OZ-canonical behaviour and not a protocol-specific concern.
+
+**Pause halts transfers/mints/burns by design.** When the token is paused, all state-mutating paths revert with `EnforcedPause`. This is **protocol-global** (no user can move GOTT) and **intentional**. The pause is gated by `PAUSER_ROLE` (= Timelock post-B.5), so it cannot be triggered without a 48 h Governor proposal.
+
+**Cross-references.** §4.1.6, §4.1.10, I-01, I-02, I-03.
+
+### §11.9 Governance / Timelock Gas Surface
+
+A Governor proposal may bundle multiple `(target, value, calldata)` triples. The Timelock executes them sequentially in `executeBatch`.
+
+**Failure modes.**
+- The bundled execution **is not atomic per-target**: if any target call reverts, `executeBatch` reverts and **all prior target calls in the same execute call unwind via EVM revert**. The proposal stays in the `Queued` state and can be re-executed after the underlying issue is fixed (§7.7 step 8/9, §7.10 row "Governance proposal target call fail").
+- A proposal with too many targets / too large calldatas may exceed block gas. The proposal can still be queued (OZ does not gas-check at queue time), but `executeBatch` will fail when invoked. There is **no on-chain max-batch-size on proposals**.
+- The open executor (AD-10) means anyone pays the gas to execute; if execution fails, anyone can retry — the call-data is fixed at queue time, so the retry runs identical bytes.
+
+**Operational mitigations.**
+- **Keep proposals small.** Single-purpose proposals (one role rotation per proposal, one parameter change per proposal) reduce both the per-execute gas budget and the per-proposal review surface.
+- **Dry-run on a fork.** Off-chain test of the proposal's `executeBatch` on a forked BSC mainnet at the queue-end block predicts failures before the open executor wastes gas.
+- **Do not bundle unrelated emergency actions.** If `pause + rotate_oracle_signer` are bundled and the rotation reverts (e.g., zero-address typo), the pause is also unwound — the protocol stays unpaused during the incident response.
+
+**No on-chain enforcement** of any of the above. These are governance hygiene practices.
+
+**Cross-references.** §7.7, I-16 (Timelock min delay), I-17 (Governor onlyGovernance for self-amendment), AD-10 (open executor), AD-11 (block-time variance affecting voting window).
+
+### §11.10 External Protocol DoS: PancakeRouter / WBNB
+
+PancakeRouter v2 is `immutable` on the GarbageCollector (§9.5). If the router becomes unavailable — paused by Pancake, deprecated, or globally reverting — the per-token swap call inside `_swapTokenToBNB` fails.
+
+**Failure mode propagation.**
+- **Per-token revert** is caught by the try/catch (§7.6). The token is forwarded to the landfill and the batch continues.
+- **All tokens reverting** means `totalBnbReceived = 0`. If the user supplied `minBnbOut > 0`, the aggregate check fails and the whole batch reverts. If the user supplied `minBnbOut = 0`, the batch completes successfully — every token is forwarded to the landfill, the user pays gas, receives no BNB, but the reward (computed from `cleanupValueUSD`) is still issued.
+
+**Governance response.**
+- **Pause `GarbageCollector`** via a `PAUSER_ROLE` Governor proposal (subject to 48 h delay). New `cleanupBatch` calls are blocked. Existing batches in flight at proposal-execution time are unaffected (they execute as their own transactions before the pause lands).
+- **Deploy a new `GarbageCollector`** with a replacement router address (parameterised at constructor — see §4.5.3). Governance migrates `COLLECTOR_ROLE` on `CleanupMining` to the new collector (revoke from old, grant to new). The old collector becomes a dead address.
+- **Cannot re-point the existing collector's router.** `router` is `immutable` (§4.5.10); replacement requires the new-deployment path above.
+
+**Cross-references.** §9.5, §7.6 (try/catch scope), AD-08 (Low–Med — swap-fail UX), AD-09 (Info — slippage trade-off).
+
+### §11.11 Native BNB Payout DoS
+
+`cleanupBatch` pays the user via `msg.sender.call{value: totalBnbReceived}("")` (§7.3 step 11, `GarbageCollector.sol:L215`). If `msg.sender` is a contract whose `receive()` or `fallback()` reverts (or consumes more than the call's gas stipend), the low-level call returns `false` and the contract reverts the whole transaction with `BnbTransferFailed`.
+
+**Failure modes by caller.**
+- **EOA caller** — `receive()` does not exist for EOAs; native transfer always accepts. Cannot fail.
+- **Contract caller without `receive()` or `fallback()`** — call returns `false` → revert. The contract caller has effectively excluded itself from `cleanupBatch`.
+- **Contract caller with reverting `receive()`** — same revert.
+- **Contract caller with gas-expensive `receive()`** — depends on call's gas budget; low-level `call` forwards all remaining gas, so a long `receive()` may consume the rest of the user's gas allowance but should not block correctness.
+
+**This is user-local DoS** — a single user contract that cannot receive BNB cannot `cleanupBatch`. The protocol-level effect is zero: other users are unaffected, no state is partially mutated.
+
+**Intentional design.** The alternative — silently retaining the user's BNB in the contract for later withdrawal — would create a "stuck BNB" surface that bloats contract storage and complicates accounting. The `withdrawStuckBNB` admin function (§4.5.6) exists for *donations and dust*, not for routine cleanup payouts; using it to recover user BNB from a failed payout would require admin intervention per incident and a custom restitution proposal, which is operationally heavier than asking the user to call again from an EOA.
+
+**Cross-references.** §4.5.6, §7.3 step 11, §7.10 row "BNB payout fail".
+
+### §11.12 DoS Classification Matrix
+
+Each scenario classified by scope, atomicity, and on-chain bound.
+
+| # | Scenario | Scope | Reverts whole tx? | Funds at risk? | Bound | Mitigation / cross-ref |
+|---|---|---|---|---|---|---|
+| 1 | Hostile ERC-20 `transferFrom` revert in `cleanupBatch` | User-local | YES | No — user retains pre-call state | not in try/catch | Frontend warning + scam-registry pre-listing. §11.4 |
+| 2 | Expensive ERC-20 `transfer` exhausts gas | User-local | YES (if exceeds block gas) | No | `MAX_TOKENS_HARD_CAP = 50` | Per-token gas not bounded by contract; user pays. §11.3 |
+| 3 | PancakeRouter per-token revert | User-local (caught) | NO | No — token routed to landfill (user retains reward computation but no BNB for that token) | try/catch around router call | AD-08, §7.6, §11.10 |
+| 4 | Aggregate `minBnbOut` fail | User-local | YES | No — full state unwound including landfill fallback transfers | user supplies `minBnbOut` | AD-09, §7.3 step 7 |
+| 5 | `oracleSigner` compromise → forged authorizations | Protocol-global (emission inflation) | NO (per call) — but cumulative effect within 48 h response window | Yes — up to ≈ 2.8M GOTT mintable | I-01 (`MAX_SUPPLY`), I-02 (`MAX_MINT_PER_DAY`), I-15 (nonce), `deadline` | AD-07 (Med), §9.3 |
+| 6 | `ORACLE_ROLE` spam batch classifications | Role-local | YES (if batch exceeds block gas) | No (no funds in registry) | No on-chain `maxBatchSize` | Operational chunking + audit-firm-optional `maxBatchSize`. §11.5, AD-02 |
+| 7 | Daily mint cap reached (legitimate or attacker-driven) | Protocol-global (mining-path-local) | YES (next `mintReward` call) | No — cap is the protection | I-02 enforces; bucket resets next UTC day | Intentional safety gate. §4.1, §7.5, I-02 |
+| 8 | `CleanupMining` paused | Protocol-global (mining path) | YES (next `recordCleanup` call) | No — pause is protection | Timelock-gated unpause (48 h) | Intentional safety gate. §4.4, AD-02 (analogous pause-window acceptance) |
+| 9 | `GarbageCollector` paused | Protocol-global (cleanup path) | YES (next `cleanupBatch` / `sendScamToLandfill`) | No | Timelock-gated unpause (48 h) | Intentional safety gate. §4.5 |
+| 10 | Timelock proposal too large for block gas | Governance | YES (`executeBatch` reverts) | No — proposal stays Queued | No on-chain max-batch-size on proposals | Operational discipline: keep proposals small. §11.9 |
+| 11 | BNB payout recipient rejects native BNB | User-local | YES | No — full state unwound | low-level `call` returns `false` → revert | Use EOA for `cleanupBatch`; contract callers must support `receive()`. §11.11 |
+| 12 | `LandfillVault` outbound transfer blocked by token (e.g., blacklist) | Token-local | YES (per outbound call) | No — vault state unchanged | n/a — token-side decision | `emergencyWithdraw` will also fail for the same token; no protocol-level escape. §11.6 |
+| 13 | Hostile ERC-20 with ERC-777 callback attempts re-entry | User-local | YES (re-entry blocked by `nonReentrant`) | No | `nonReentrant` on every state-mutating external function | §11.4, §9.6 |
+| 14 | PancakeRouter globally unavailable | External protocol | NO per-token (caught); YES if `minBnbOut > 0` and no swaps succeed | No (tokens land in vault; user accepts loss or transaction reverts) | try/catch + `minBnbOut` | Governance pause + new collector deploy. §11.10 |
+
+**Reading the matrix.**
+- **Funds at risk: only row 5** (AD-07 oracleSigner compromise) carries a fund-loss column — and that fund is *protocol emission*, not user holdings.
+- **Protocol-global DoS rows (7, 8, 9):** all are intentional safety gates triggered by governance, not by attacker action. The 48 h Timelock delay is the load-bearing review window.
+- **User-local rows (1, 2, 3, 4, 11, 13):** affect only the calling user's transaction; protocol state is never partially mutated by these.
+
+### §11.13 Residual Gas Risks / Audit Requests
+
+Items the audit firm may legitimately request as part of their finding set:
+
+1. **Fork-test against real BSC PancakeRouter v2 (`0x10ED43C7…E4cD16Ce`)** with a representative spread of real BSC tokens: high-liquidity, low-liquidity, fee-on-transfer, rebasing, ERC-777-like. The current test suite uses `MockPancakeRouter` (always succeeds at 1:1) and `MockRevertingRouter` (always fails). The intermediate behaviour — partial liquidity, multi-hop routing, dynamic slippage — is unexercised. Cross-ref §4.5.13, §9.5, §11.4.
+2. **Coverage for fee-on-transfer / rebasing / ERC-777-like tokens** in both the GarbageCollector swap path and the LandfillVault custody path. Current fixtures use standard `MockERC20`. Cross-ref §4.3.13, §11.4, AD-03.
+3. **Optional `maxBatchSize` on `ScamRegistry.setStatusBatch`** as a defence-in-depth bound. Single-line addition. Cross-ref §11.5, AD-02.
+4. **Frontend gas-estimator warnings** for: high token count (approaching `maxTokensPerCleanup`); low-liquidity tokens (high revert probability via the try/catch); known hostile tokens (per off-chain scam registry feed). *Operational, not on-chain.* Cross-ref §11.3, §11.4.
+5. **Governance proposal hygiene** — written guidance for proposers on keeping `executeBatch` payloads small, separating emergency actions from configuration changes, and dry-running on a fork before queueing. *Operational.* Cross-ref §11.9.
+6. **Dedicated `invariant_*` handler for I-15** (`nonces[u]` monotonic) — currently covered implicitly by `testFuzz_replayBlocked` plus replay-rejection Hardhat tests. Audit firm may want a handler-tracked Foundry invariant of the shape `nonces[u] == handler.successfulCleanupBatchCount[u]`. Cross-ref §6.5, §4.5.13.
+7. **End-to-end self-amendment proposal test** for I-17 (Governor `onlyGovernance` parameter setters). Currently only the *initial-value* assertions exist; the propose-→-queue-→-execute-→-verify path is not exercised. Cross-ref §6.6, §4.7.13.
+
+None of these items are blocking for the Phase 4 audit submission; they are listed here so the audit firm can prioritise them according to its own methodology.
 
 ---
 
