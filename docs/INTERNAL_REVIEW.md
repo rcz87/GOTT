@@ -2,7 +2,7 @@
 
 > **Status:** Pre-audit internal review. Intended for an external audit firm (SolidProof / Hacken tier) with no prior project context.
 > **Commit under review:** `8a80b35` (main).
-> **Document version:** Draft 0.2 — §4 Contract Inventory complete; §5, §7–§16, §1, and appendices pending.
+> **Document version:** Draft 0.3 — §4 Contract Inventory + §5 Role Matrix complete; test counts reconciled (193 Hardhat + 54 Foundry); §7–§16, §1, and appendices pending.
 
 ---
 
@@ -16,7 +16,7 @@
 
 This section tracks the internal drafting state. It is **not** part of the deliverable to the audit firm; it will be deleted in the Draft 1.0 cut.
 
-### Done in this revision (Draft 0.2)
+### Done in this revision (Draft 0.3)
 
 | Section | Status | Notes |
 |---|---|---|
@@ -29,25 +29,26 @@ This section tracks the internal drafting state. It is **not** part of the deliv
 | §4.5 GarbageCollector | ✅ Complete | 13-element template. **High-risk contract.** CEI deep-dive, internal-helper audit notes, 9 logical Slither suppressions. AD-07/08/09 forward-ref'd to §10. |
 | §4.6 GuardiansTimelockController | ✅ Complete | Vanilla OZ wrapper (24 LoC). AD-10 (open executor) forward-ref'd to §10. |
 | §4.7 GuardiansGovernor | ✅ Complete | OZ module composition (151 LoC, 9 required overrides). AD-11 (BSC block-time variance) forward-ref'd to §10. |
+| §5 Role Matrix | ✅ Complete | Consolidated table across 7 contracts + 4 post-table notes (contract-bound roles, hot keys, pause asymmetry, roleless Governor). |
 | §6 Invariant ID registry | ✅ Stub complete | I-01..I-17. Body proof-sketches pending. |
+| Test count reconciliation | ✅ Done | **193 Hardhat + 54 Foundry = 247 total, 100% pass.** Run output: 0 failed, 0 skipped. Earlier 167+35 scan was undercount; PR-claimed 193+54 verified. Per-file: GuardiansToken 40/11, ScamRegistry 29/9, LandfillVault 27/10, CleanupMining 38/10, GarbageCollector 32/9, Governance 15/5, RoleTransfer 12/—. |
 
 ### Pending sections (planned order)
 
 | Order | Section | Estimated complexity | Blocker / dependency |
 |---|---|---|---|
-| 1 | §5 Role Matrix | Low (~50 lines) — consolidate from §4.X.4 tables | None. Fastest next step. |
-| 2 | §10 Acknowledged Design Decisions (body) | Medium — write AD-01..AD-11 entries with severity + acceptance rationale | User ack on proposed severities for AD-07..AD-11. |
-| 3 | §6 body proof-sketches | Medium — one paragraph per invariant I-01..I-17 | Registry stub already done. |
-| 4 | §9 Trust Assumptions & Oracle Surface | Medium — formalises the two "hot key" surfaces (`oracleSigner`, `ORACLE_ROLE`) and PancakeRouter trust boundary | Pulls from §4.5.4 and §3.4. |
-| 5 | §7 External Call Graph | Low–Medium — diagrams already partially in §3.2; this section is the formal version with arrow direction + role gates | None. |
-| 6 | §11 Gas & DoS Surface | Medium — covers `MAX_TOKENS_HARD_CAP = 50`, the per-batch loops in `cleanupBatch`, registry write fan-out | Benefits from real-token fork tests (§4.5.13 gap). |
-| 7 | §8 Storage Layout & Upgrade Story | Low — protocol is non-upgradeable; section states this and walks each contract's storage layout for completeness | None. |
-| 8 | §13 Emergency Response | Medium — playbook for the AD-flagged scenarios (oracle key compromise, ORACLE_ROLE compromise, router incident, Timelock-stuck proposal) | Depends on §9 and §10 to be drafted first. |
-| 9 | §14 Test Coverage Summary | Low–Medium — requires running `npx hardhat test` and `forge test` to reconcile the 167+35 scan vs 193+54 PR-claimed counts | **Action item: run both test suites and pipe to `tail` to capture the summary line.** |
-| 10 | §15 Out of Scope | Low — short list (off-chain signer infra, ORACLE_ROLE keeper service, frontend) | None. |
-| 11 | §16 Appendices (Glossary, EIP-712, Reward Formula derivation, Build & Reproducibility, Repo refs) | Medium | Reward-formula derivation pulls from §4.4.12 inline rationale. |
-| 12 | §12 Deployment Reference | Low — short stub + link to `docs/DEPLOYMENT.md` | **Blocker: `docs/DEPLOYMENT.md` does not yet exist.** Create alongside §12 drafting. |
-| 13 | §1 Document Purpose | Low | Write **last**, after every other section is final. |
+| 1 | §10 Acknowledged Design Decisions (body) | Medium — write AD-01..AD-11 entries with severity + acceptance rationale | User ack on proposed severities for AD-07..AD-11. |
+| 2 | §6 body proof-sketches | Medium — one paragraph per invariant I-01..I-17 | Registry stub already done. |
+| 3 | §9 Trust Assumptions & Oracle Surface | Medium — formalises the two "hot key" surfaces (`oracleSigner`, `ORACLE_ROLE`) and PancakeRouter trust boundary | Pulls from §4.5.4, §5.3 hot-key table, and §3.4. |
+| 4 | §7 External Call Graph | Low–Medium — diagrams already partially in §3.2; this section is the formal version with arrow direction + role gates | None. |
+| 5 | §11 Gas & DoS Surface | Medium — covers `MAX_TOKENS_HARD_CAP = 50`, the per-batch loops in `cleanupBatch`, registry write fan-out | Benefits from real-token fork tests (§4.5.13 gap). |
+| 6 | §8 Storage Layout & Upgrade Story | Low — protocol is non-upgradeable; section states this and walks each contract's storage layout for completeness | None. |
+| 7 | §13 Emergency Response | Medium — playbook for the AD-flagged scenarios (oracle key compromise, ORACLE_ROLE compromise, router incident, Timelock-stuck proposal) | Depends on §9 and §10 to be drafted first. |
+| 8 | §14 Test Coverage Summary | Low — write up the verified 193+54 numbers + coverage-gap rollup from §4.X.13 cells | Test counts already verified (Draft 0.3). |
+| 9 | §15 Out of Scope | Low — short list (off-chain signer infra, ORACLE_ROLE keeper service, frontend) | None. |
+| 10 | §16 Appendices (Glossary, EIP-712, Reward Formula derivation, Build & Reproducibility, Repo refs) | Medium | Reward-formula derivation pulls from §4.4.12 inline rationale. |
+| 11 | §12 Deployment Reference | Low — short stub + link to `docs/DEPLOYMENT.md` | **Blocker: `docs/DEPLOYMENT.md` does not yet exist.** Create alongside §12 drafting. |
+| 12 | §1 Document Purpose | Low | Write **last**, after every other section is final. |
 
 ### Pending design acceptances (§10 — awaiting user severity ack)
 
@@ -71,7 +72,7 @@ This section tracks the internal drafting state. It is **not** part of the deliv
 - No fork-test against real BSC PancakeRouter v2 (§4.5.13).
 - I-15 (`nonces[u]` monotonic) has no dedicated `invariant_*` handler — implicit only via `testFuzz_replayBlocked` (§4.5.13).
 - I-17 (Governor `onlyGovernance` self-amendment) not exercised end-to-end (§4.7.13).
-- Test-count reconciliation: agent-scan found 167 Hardhat + 35 Foundry; PRs claim 193 + 54. Must run both suites in §14.
+- ~~Test-count reconciliation~~ — done in Draft 0.3: 193 Hardhat + 54 Foundry verified.
 
 ---
 
@@ -1776,6 +1777,86 @@ OZ `Governor` defines `receive() external payable virtual` that reverts unless t
 | `test-foundry/Governance.t.sol` | *verified in §14* | Fuzz: `testFuzz_quorumIsExact4PercentOfPastSupply` (asserts `quorum() == 4 * pastSupply / 100` across a wide mint range), `testFuzz_proposeRevertsBelowThreshold`, `testFuzz_proposeAcceptsAtOrAboveThreshold`. Targeted: `test_governorSettings`, `test_executorIsTimelock` (asserts `_executor()` returns Timelock — load-bearing for role wiring). |
 
 **Coverage gap to flag for the auditor.** No test exercises a **parameter-change proposal** end-to-end (e.g., a proposal that calls `setVotingPeriod` or `updateQuorumNumerator` on the Governor itself, queued through the Timelock, executed, and the new value read back). The mechanism is OZ-canonical and well-audited, but a one-shot smoke test of the self-governance path would strengthen the audit story. Not blocking — flag in §14.
+
+---
+
+## §5 Role Matrix
+
+This section consolidates the per-contract role tables in §4.X.4 into a single matrix covering every `AccessControl` role declared across the protocol. The intent is to give the auditor a one-page view of the authority graph: which key holds what, at deploy vs. steady-state, and where in the source the transition happens.
+
+### 5.1 Lifecycle convention
+
+Every role on every protocol contract follows the same lifecycle:
+
+1. **Phase A (deploy)** — granted to the deployer EOA in the constructor, or granted post-deploy to a sibling contract address (the two contract-bound roles: `CLEANUP_MINER_ROLE` on the token, `COLLECTOR_ROLE` on mining).
+2. **Phase B.5 (cutover)** — `scripts/transferAdminRoles.js` grants every deployer-held admin/operational role to the Timelock, then revokes it from the deployer. The two contract-bound roles are deliberately skipped at this step (the contract address remains the role holder).
+3. **Phase B.6 (final lock)** — deployer renounces `DEFAULT_ADMIN_ROLE` on the Timelock itself. After this, every parameter change requires a Governor proposal subject to the full 48 h Timelock delay.
+
+The protocol has **no role that is granted to an externally-owned account in steady-state**, with one explicit exception: `ORACLE_ROLE` on ScamRegistry, held by the off-chain Guardians-oracle key (rotatable via DAO). See §9 for the trust analysis of this exception.
+
+### 5.2 The matrix
+
+| Contract | Role | Hash | Granted at deploy to | Steady-state holder (post-B.5) | Capabilities | Phase B.5 transfer ref |
+|---|---|---|---|---|---|---|
+| GuardiansToken | `DEFAULT_ADMIN_ROLE` | `0x00…00` | deployer (A.1) | Timelock | role management | `scripts/transferAdminRoles.js:28` |
+| GuardiansToken | `MINTER_ROLE` | `keccak256("MINTER_ROLE")` | deployer (A.1) | Timelock | `mint(address,uint256)` (TGE + treasury) | `scripts/transferAdminRoles.js:28` |
+| GuardiansToken | `PAUSER_ROLE` | `keccak256("PAUSER_ROLE")` | deployer (A.1) | Timelock | `pause()`, `unpause()` | `scripts/transferAdminRoles.js:28` |
+| GuardiansToken | `CLEANUP_MINER_ROLE` | `keccak256("CLEANUP_MINER_ROLE")` | — (not at deploy) | **CleanupMining contract** | `mintReward(address,uint256)` (subject to `MAX_MINT_PER_DAY` + `MAX_SUPPLY`) | granted at Phase A.7, **intentionally skipped** at B.5 — see note below the table |
+| ScamRegistry | `DEFAULT_ADMIN_ROLE` | `0x00…00` | deployer (A.3) | Timelock | role management | `scripts/transferAdminRoles.js:29` |
+| ScamRegistry | `ORACLE_ROLE` | `keccak256("ORACLE_ROLE")` | deployer (A.3, transitional) | **Off-chain Guardians-oracle EOA** (rotated post-A.3 via DAO proposal) | `setStatus(address,TokenStatus)`, `setStatusBatch(...)` | not in `transferAdminRoles.js` — rotated separately to the oracle key |
+| ScamRegistry | `PAUSER_ROLE` | `keccak256("PAUSER_ROLE")` | deployer (A.3) | Timelock | `pause()`, `unpause()` | `scripts/transferAdminRoles.js:29` |
+| LandfillVault | `DEFAULT_ADMIN_ROLE` | `0x00…00` | deployer (A.4) | Timelock | role management | `scripts/transferAdminRoles.js:30` |
+| LandfillVault | `DAO_ROLE` | `keccak256("DAO_ROLE")` | deployer (A.4, via `dao` constructor arg) | Timelock | `burnToken(...)`, `transferToken(...)` (`whenNotPaused + nonReentrant`) | `scripts/transferAdminRoles.js:30` |
+| LandfillVault | `EMERGENCY_ROLE` | `keccak256("EMERGENCY_ROLE")` | deployer (A.4) | Timelock (per current deploy; author's intent = separate multisig — AD-04) | `emergencyWithdraw(...)` — **bypasses pause** | `scripts/transferAdminRoles.js:30` |
+| LandfillVault | `PAUSER_ROLE` | `keccak256("PAUSER_ROLE")` | deployer (A.4) | Timelock | `pause()`, `unpause()` | `scripts/transferAdminRoles.js:30` |
+| CleanupMining | `DEFAULT_ADMIN_ROLE` | `0x00…00` | deployer (A.5) | Timelock | role management | `scripts/transferAdminRoles.js:31` |
+| CleanupMining | `ADMIN_ROLE` | `keccak256("ADMIN_ROLE")` | deployer (A.5) | Timelock | `setBaseRate(uint256)`, `setTierThresholds(uint256,uint256)` | `scripts/transferAdminRoles.js:31` |
+| CleanupMining | `PAUSER_ROLE` | `keccak256("PAUSER_ROLE")` | deployer (A.5) | Timelock | `pause()`, `unpause()` | `scripts/transferAdminRoles.js:31` |
+| CleanupMining | `COLLECTOR_ROLE` | `keccak256("COLLECTOR_ROLE")` | — (not at deploy) | **GarbageCollector contract** | `recordCleanup(address,uint256,uint256)` | granted at Phase A.8, **intentionally skipped** at B.5 — see note below the table |
+| GarbageCollector | `DEFAULT_ADMIN_ROLE` | `0x00…00` | deployer (A.6) | Timelock | role management | `scripts/transferAdminRoles.js:32` |
+| GarbageCollector | `ADMIN_ROLE` | `keccak256("ADMIN_ROLE")` | deployer (A.6) | Timelock | `setMiningContract`, `setLandfillVault`, `setOracleSigner`, `setMaxTokensPerCleanup`, `setMinCleanupValueUSD`, `setSwapDeadlineBuffer`, `withdrawStuckBNB` | `scripts/transferAdminRoles.js:32` |
+| GarbageCollector | `PAUSER_ROLE` | `keccak256("PAUSER_ROLE")` | deployer (A.6) | Timelock | `pause()`, `unpause()` | `scripts/transferAdminRoles.js:32` |
+| GuardiansTimelockController | `DEFAULT_ADMIN_ROLE` | `0x00…00` | deployer (B.1, temporary) | **nobody — renounced at Phase B.6** | role management | `renounceRole` self-call at B.6 — the final lock |
+| GuardiansTimelockController | `PROPOSER_ROLE` | `keccak256("PROPOSER_ROLE")` | — (empty array at B.1) | Governor | `schedule(...)`, `scheduleBatch(...)`, `cancel(...)` | granted at Phase B.3 (`grantRole` by deployer-admin) |
+| GuardiansTimelockController | `CANCELLER_ROLE` | `keccak256("CANCELLER_ROLE")` | — (empty array at B.1) | Governor | `cancel(bytes32 id)` | granted at Phase B.4 |
+| GuardiansTimelockController | `EXECUTOR_ROLE` | `keccak256("EXECUTOR_ROLE")` | `address(0)` (B.1, open execution) | `address(0)` — anyone | `execute(...)`, `executeBatch(...)` post-delay | not transferred — AD-10 |
+| GuardiansGovernor | — | — | — | — | (roleless contract — authorization is by delegated voting power, not by `AccessControl`) | — |
+
+### 5.3 Notes on the matrix
+
+**1. Two roles intentionally skipped at Phase B.5.**
+
+`CLEANUP_MINER_ROLE` (on GuardiansToken) and `COLLECTOR_ROLE` (on CleanupMining) are the only roles **not transferred to the Timelock** at the B.5 cutover. Both are deliberately bound to a sibling *contract address*, not an EOA:
+
+- `CLEANUP_MINER_ROLE` is held by the deployed `CleanupMining` contract — granted in Phase A.7 so that `recordCleanup` can ultimately mint GOTT to the user via `gott.mintReward`.
+- `COLLECTOR_ROLE` is held by the deployed `GarbageCollector` contract — granted in Phase A.8 so that `cleanupBatch` can forward reward bookkeeping to `recordCleanup`.
+
+Both are still **revocable** by `DEFAULT_ADMIN_ROLE` (= Timelock post-B.5) via a standard `revokeRole(...)` DAO proposal — the proposal would be the natural path for swapping in a replacement `CleanupMining` or `GarbageCollector` contract. See the author's inline note at `scripts/transferAdminRoles.js:15-16`.
+
+**2. The two "hot key" surfaces in steady-state.**
+
+After the B.6 final lock, only two keys remain *operationally hot* (i.e., needed for routine protocol operations rather than admin parameter changes):
+
+| Key | Surface | Role granted | Compromise blast radius | Mitigation |
+|---|---|---|---|---|
+| `ORACLE_ROLE` keeper (off-chain backend EOA) | ScamRegistry | `ORACLE_ROLE` | False-positive: DoS on GarbageCollector swap-gate for mis-flagged tokens. False-negative: a malicious token slips past the gate, but ReentrancyGuard / CEI / swap-fail fallback still bound user loss to the swap output. | DAO can `revokeRole(ORACLE_ROLE, compromisedKey)` then `grantRole(ORACLE_ROLE, newKey)` via Timelock proposal (48 h delay). |
+| `oracleSigner` (off-chain EIP-712 signer EOA) | GarbageCollector | **none** (not a role — plain `address` in storage) | Forged `cleanupValueUSD` → unlimited reward mint up to per-day cap (`MAX_MINT_PER_DAY = 1.4M GOTT`). | DAO calls `setOracleSigner(newSigner)` (48 h Timelock delay). Per-user nonce + deadline bound any pre-rotation forgeries. — AD-07 |
+
+Both keys are rotatable through governance with no contract redeploy required. The 48 h Timelock delay means the maximum incident response window is one day for detection + one day for proposal queue, which is the load-bearing assumption for AD-07.
+
+**3. Pause-window asymmetry.**
+
+`EMERGENCY_ROLE` exists on **only one** protocol contract: LandfillVault. It permits `emergencyWithdraw` to bypass pause, providing a fast circuit-breaker for vault drainage. The other contracts (GuardiansToken, ScamRegistry, CleanupMining, GarbageCollector) have no equivalent — their fastest pause path is `PAUSER_ROLE` held by the Timelock, which is subject to the full 48 h queue delay post-B.5. See §4.2.4, §4.4.4, §4.5.4 for the contract-specific acceptances of this latency.
+
+**4. The Governor is roleless by design.**
+
+Authorization on the Governor is by *delegated voting weight* (for `propose`) and *snapshot vote balance* (for `castVote*`), not by an `AccessControl` registry. The single OZ-internal `onlyGovernance` modifier governs self-calls during proposal execution (used by `setVotingDelay`, `setVotingPeriod`, etc.) — this is enforced by checking that the caller is the Timelock-executed proposal context, not by a role mapping. See `docs/INTERNAL_REVIEW.md` §4.7.4 for the breakdown by capability.
+
+### 5.4 Cross-references
+
+- Source for the matrix rows: §4.1.4 (GuardiansToken), §4.2.4 (ScamRegistry), §4.3.4 (LandfillVault), §4.4.4 (CleanupMining), §4.5.4 (GarbageCollector), §4.6.4 (Timelock), §4.7.4 (Governor — roleless).
+- Source for the transfer script: `scripts/transferAdminRoles.js`. Idempotent; tested in `test/RoleTransfer.test.js` (12 tests).
+- Source for Phase A/B/C lifecycle: §3.3.
 
 ---
 
