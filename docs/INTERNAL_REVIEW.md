@@ -2,7 +2,7 @@
 
 > **Status:** Pre-audit internal review. Intended for an external audit firm (SolidProof / Hacken tier) with no prior project context.
 > **Commit under review:** `8a80b35` (main).
-> **Document version:** Draft 0.5 — §4 + §5 + §6 (registry + body proof-sketches) + §10 (AD-02..AD-11 body) complete; test counts reconciled (193 Hardhat + 54 Foundry); §7, §8, §9, §11, §12, §13, §14, §15, §16, §1 pending.
+> **Document version:** Draft 0.6 — §4 + §5 + §6 + §9 + §10 complete; test counts reconciled (193 Hardhat + 54 Foundry); §7, §8, §11, §12, §13, §14, §15, §16, §1 pending.
 
 ---
 
@@ -16,7 +16,7 @@
 
 This section tracks the internal drafting state. It is **not** part of the deliverable to the audit firm; it will be deleted in the Draft 1.0 cut.
 
-### Done in this revision (Draft 0.5)
+### Done in this revision (Draft 0.6)
 
 | Section | Status | Notes |
 |---|---|---|
@@ -31,6 +31,7 @@ This section tracks the internal drafting state. It is **not** part of the deliv
 | §4.7 GuardiansGovernor | ✅ Complete | OZ module composition (151 LoC, 9 required overrides). AD-11 (BSC block-time variance) forward-ref'd to §10. |
 | §5 Role Matrix | ✅ Complete | Consolidated table across 7 contracts + 4 post-table notes (contract-bound roles, hot keys, pause asymmetry, roleless Governor). |
 | §6 System Invariants (registry + body proof-sketches) | ✅ Complete | Registry I-01..I-17 plus §6.1-§6.6 body. Each invariant covered with 6-element format (Statement / Why it matters / Enforcement / Verification / Assumptions / Failure mode blocked). Coverage gaps honestly flagged for I-15 (no dedicated `invariant_*`), I-16 (OZ Timelock property, no Foundry invariant), I-17 (no end-to-end self-amendment test). Cross-refs: AD-03 (I-08 FoT limit), AD-06 (I-02 UTC bucket), AD-07 (I-02 / I-15 bound). |
+| §9 Trust Assumptions & Oracle Surface | ✅ Complete | §9.1 Trust Model Overview (four trust classes), §9.2 Hot-Key Surface Summary (5-row table), §9.3 oracleSigner deep-dive, §9.4 ORACLE_ROLE deep-dive, §9.5 PancakeRouter / WBNB boundary, §9.6 User-Supplied ERC-20 boundary, §9.7 Governance / Timelock boundary, §9.8 Bootstrap Trust Window, §9.9 Consolidated Trust Assumption Matrix. Operational vs on-chain controls explicitly labelled throughout. |
 | §10 Acknowledged Design Decisions (body) | ✅ Complete | AD-02..AD-11 drafted using the 9-element format (Title / Severity / Affected / Decision / Rationale / Risk / Mitigation / Residual / Cross-ref). AD-01 reserved for the highest-priority external-audit finding. Severities: AD-02..AD-04 Low, AD-05/AD-06/AD-09/AD-10/AD-11 Info, AD-07 Med, AD-08 Low–Med. |
 | Test count reconciliation | ✅ Done | **193 Hardhat + 54 Foundry = 247 total, 100% pass.** Run output: 0 failed, 0 skipped. Earlier 167+35 scan was undercount; PR-claimed 193+54 verified. Per-file: GuardiansToken 40/11, ScamRegistry 29/9, LandfillVault 27/10, CleanupMining 38/10, GarbageCollector 32/9, Governance 15/5, RoleTransfer 12/—. |
 
@@ -38,16 +39,15 @@ This section tracks the internal drafting state. It is **not** part of the deliv
 
 | Order | Section | Estimated complexity | Blocker / dependency |
 |---|---|---|---|
-| 1 | §9 Trust Assumptions & Oracle Surface | Medium — formalises the two "hot key" surfaces (`oracleSigner`, `ORACLE_ROLE`) and PancakeRouter trust boundary | Pulls from §4.5.4, §5.3 hot-key table, §3.4, and §10 AD-07/AD-02. |
-| 2 | §7 External Call Graph | Low–Medium — diagrams already partially in §3.2; this section is the formal version with arrow direction + role gates | None. |
-| 3 | §11 Gas & DoS Surface | Medium — covers `MAX_TOKENS_HARD_CAP = 50`, the per-batch loops in `cleanupBatch`, registry write fan-out | Benefits from real-token fork tests (§4.5.13 gap). |
-| 4 | §8 Storage Layout & Upgrade Story | Low — protocol is non-upgradeable; section states this and walks each contract's storage layout for completeness | None. |
-| 5 | §13 Emergency Response | Medium — playbook for AD-07 (oracle key compromise), AD-02 (ORACLE_ROLE compromise), router incident, Timelock-stuck proposal, paused-vault recovery | §9 + §10 already drafted. |
-| 6 | §14 Test Coverage Summary | Low — write up the verified 193+54 numbers + coverage-gap rollup from §4.X.13 cells | Test counts already verified. |
-| 7 | §15 Out of Scope | Low — short list (off-chain signer infra, ORACLE_ROLE keeper service, frontend) | None. |
-| 8 | §16 Appendices (Glossary, EIP-712, Reward Formula derivation, Build & Reproducibility, Repo refs) | Medium | Reward-formula derivation pulls from §4.4.12 inline rationale + AD-05. |
-| 9 | §12 Deployment Reference | Low — short stub + link to `docs/DEPLOYMENT.md` | **Blocker: `docs/DEPLOYMENT.md` does not yet exist.** Create alongside §12 drafting. |
-| 10 | §1 Document Purpose | Low | Write **last**, after every other section is final. |
+| 1 | §7 External Call Graph | Low–Medium — diagrams already partially in §3.2; this section is the formal version with arrow direction + role gates | None. |
+| 2 | §11 Gas & DoS Surface | Medium — covers `MAX_TOKENS_HARD_CAP = 50`, the per-batch loops in `cleanupBatch`, registry write fan-out | Benefits from real-token fork tests (§4.5.13 gap). |
+| 3 | §8 Storage Layout & Upgrade Story | Low — protocol is non-upgradeable; section states this and walks each contract's storage layout for completeness | None. |
+| 4 | §13 Emergency Response | Medium — playbook for AD-07 (oracle key compromise), AD-02 (ORACLE_ROLE compromise), router incident, Timelock-stuck proposal, paused-vault recovery | §9 + §10 already drafted. |
+| 5 | §14 Test Coverage Summary | Low — write up the verified 193+54 numbers + coverage-gap rollup from §4.X.13 cells | Test counts already verified. |
+| 6 | §15 Out of Scope | Low — short list (off-chain signer infra, ORACLE_ROLE keeper service, frontend) | None. |
+| 7 | §16 Appendices (Glossary, EIP-712, Reward Formula derivation, Build & Reproducibility, Repo refs) | Medium | Reward-formula derivation pulls from §4.4.12 inline rationale + AD-05. |
+| 8 | §12 Deployment Reference | Low — short stub + link to `docs/DEPLOYMENT.md` | **Blocker: `docs/DEPLOYMENT.md` does not yet exist.** Create alongside §12 drafting. |
+| 9 | §1 Document Purpose | Low | Write **last**, after every other section is final. |
 
 ### Design acceptances catalog (§10 body now drafted — all severities user-ack'd)
 
@@ -2107,6 +2107,231 @@ Authorization on the Governor is by *delegated voting weight* (for `propose`) an
 - Source for the matrix rows: §4.1.4 (GuardiansToken), §4.2.4 (ScamRegistry), §4.3.4 (LandfillVault), §4.4.4 (CleanupMining), §4.5.4 (GarbageCollector), §4.6.4 (Timelock), §4.7.4 (Governor — roleless).
 - Source for the transfer script: `scripts/transferAdminRoles.js`. Idempotent; tested in `test/RoleTransfer.test.js` (12 tests).
 - Source for Phase A/B/C lifecycle: §3.3.
+
+---
+
+## §9 Trust Assumptions & Oracle Surface
+
+This section enumerates every off-chain or external dependency the protocol *trusts but does not control*. The audit firm should treat each entry as a question of the form "what can this trusted party do, and what stops them from doing more?" Anything that is *not* in this section is, by elimination, fully constrained by on-chain code — the §6 invariant catalog plus the §4 contract inventory.
+
+### §9.1 Trust Model Overview
+
+The GOTT protocol is **non-upgradeable on-chain** (no proxy, no `delegatecall`-to-implementation, no admin-controlled storage rewrites — see §8 once drafted). Once deployed, every contract's bytecode is fixed for its lifetime. Despite this, the live system depends on several off-chain and external actors whose behaviour cannot be verified at compile time. Those dependencies fall into four classes:
+
+| Class | What is trusted | Why it cannot be eliminated |
+|---|---|---|
+| **1. Hot-key trust** | Off-chain EOAs holding role grants or producing signatures consumed on-chain (`oracleSigner`, `ORACLE_ROLE` keeper, deployer during bootstrap). | The protocol's value proposition requires off-chain inputs (USD pricing, scam classification). Pushing those fully on-chain would require oracles or unbounded computation. |
+| **2. External protocol trust** | Other deployed contracts the protocol calls into or reads from (PancakeRouter, WBNB). | The protocol exists to swap tokens; that requires a DEX. Replicating Pancake's liquidity on-chain is out of scope. |
+| **3. User-supplied token trust** | Arbitrary ERC-20 tokens that enter `cleanupBatch` and the vault. | The protocol's user-facing flow accepts whatever token the user holds. |
+| **4. Governance / process trust** | The Timelock + Governor proposal pipeline + the operational health of voters and proposers after Phase B.5. | The DAO is the protocol's parameter-tuning authority by design. |
+
+Each class is examined below. The format for each subsection is: who is trusted, what they can do, what bounds them on-chain, and what bounds them operationally. The protocol does **not** assume any of these parties is honest or available — only that their *blast radius* is bounded as described.
+
+### §9.2 Hot-Key Surface Summary
+
+| # | Trust surface | Where used | Capability (the worst single action) | Worst-case impact | Bound / mitigation | Related AD | Related invariant |
+|---|---|---|---|---|---|---|---|
+| 1 | `oracleSigner` EOA | `GarbageCollector.cleanupBatch` EIP-712 signature verification | Forge a `CleanupAuthorization` with arbitrarily inflated `cleanupValueUSD` for any `(user, batchHash, nonce, deadline)` they choose | Mint up to `MAX_MINT_PER_DAY = 1.4M GOTT` per UTC day to attacker-chosen addresses, until rotated. Maximum ≈ 2.8M GOTT (0.28 % of MAX_SUPPLY) across the 48 h Timelock rotation window. | `MAX_MINT_PER_DAY` daily cap (I-02); `MAX_SUPPLY` absolute cap (I-01); per-user monotonic nonce (I-15); per-signature `deadline`; Timelock-gated `setOracleSigner` rotation; operational HSM custody + real-time mint monitoring | AD-07 (Med) | I-01, I-02, I-15 |
+| 2 | `ORACLE_ROLE` keeper EOA on ScamRegistry | `ScamRegistry.setStatus` / `setStatusBatch` | Set arbitrary `TokenStatus` on arbitrary tokens (legit → Scam to DoS the cleanup gate; malicious → Legit to bypass it) | Up to 48 h of mis-classification across any subset of tokens. No fund movement. | Enum range check (I-04); `reportCount` monotonic tamper trail (I-05, I-07); `lastUpdated` freshness signal (I-06); Timelock-gated revoke + rotate path; pause via `PAUSER_ROLE` (also Timelock, 48 h delay) | AD-02 (Low) | I-04, I-05, I-06, I-07 |
+| 3 | Deployer EOA during Phase A / B (bootstrap window) | All protocol contracts before Phase B.5 cutover; Timelock before Phase B.6 final lock | Hold every admin role on every protocol contract; mint up to `MAX_SUPPLY` via `MINTER_ROLE`; pause or reconfigure any contract; reduce Timelock `_minDelay` before B.6 | Full protocol takeover if the deployer key is compromised during the bootstrap window. | `scripts/transferAdminRoles.js` cuts over to Timelock at B.5; deployer renounces Timelock admin at B.6; idempotent script + `test/RoleTransfer.test.js` (12 tests) cover the cutover ritual | — (not an AD — risk is the *bootstrap window*, see §9.8) | I-01, I-16 |
+| 4 | Timelock + Governor (post-Phase-B.5) | Every admin path on every protocol contract | Pass any proposal the Governor passes — re-point `miningContract` / `landfillVault` / `oracleSigner`, change tier thresholds, pause contracts, grant or revoke roles | A malicious proposal that passes the vote and survives the 48 h queue can drain or reconfigure the protocol. The vote + queue gates are the load-bearing protection; there is no checkpoint between queue expiry and execution. | 48 h Timelock review window; `CANCELLER_ROLE` (Governor) can cancel queued ops; open executor (anyone) means execution is observable | AD-10 (Info, open executor); AD-11 (Info, voting-window variance) | I-16, I-17 |
+| 5 | `EMERGENCY_ROLE` holder (currently Timelock; future-state separate multisig per AD-04) | `LandfillVault.emergencyWithdraw` (bypasses pause) | Sweep arbitrary tokens out of the vault while paused | Drain the landfill treasury. | `nonReentrant` + role gate; in current deployment also subject to 48 h Timelock delay because `EMERGENCY_ROLE` is held by the Timelock (the architectural intent of "fast circuit breaker" is **not realized** in v0.2.x — see AD-04) | AD-04 (Low) | I-08, I-09, I-10 |
+
+A few patterns to note across the table:
+- **Two roles are held by off-chain EOAs in steady state** (rows 1 and 2). All other roles are held either by a contract address (Timelock, Governor, sibling protocol contracts) or by `address(0)` (open executor).
+- **No hot-key surface can directly bypass `MAX_SUPPLY` (I-01) or the per-day cap (I-02)** — both are unconditional on-chain checks. The worst-case mint figure for AD-07 is derived *from* I-02 × 48 h, not despite it.
+- **Operational controls (HSM custody, monitoring, cancellation watch) are not on-chain enforced.** They are listed in the "Bound / mitigation" column for completeness, but they are exactly the surface the audit firm should challenge as part of the operational-readiness review.
+
+### §9.3 `oracleSigner` Trust Surface
+
+**Where used.** `GarbageCollector.cleanupBatch(...)` (`GarbageCollector.sol:L174`) requires an EIP-712 signature from `oracleSigner` over a `CleanupAuthorization` struct binding `(user, batchHash, cleanupValueUSD, nonce, deadline)`. The signature is verified inside `_verifyAndConsumeAuth(...)` (`GarbageCollector.sol:L228`) via `ECDSA.recover(digest, signature) == oracleSigner` (`L248`). The signer address is stored as a plain mutable `address` — not an `AccessControl` role — and rotated via `setOracleSigner(...)` (`L348`) under `ADMIN_ROLE` (= Timelock post-B.5).
+
+**What the signer can do.**
+- Authorise an arbitrarily inflated `cleanupValueUSD` for a batch they sign. This translates linearly into reward magnitude via `CleanupMining.calculateReward(...)` (see §4.4 reward formula).
+- Choose the `user` field of the authorization, but the on-chain digest at `GarbageCollector.sol:L242` binds `msg.sender`, not the signed `user` — so a forged authorization can only be executed by the address it was signed for. The attacker must therefore control the recipient address (or coordinate with the user) to capture the forged reward.
+- Set arbitrary `deadline` (subject to the user's frontend potentially rejecting unreasonable values — but on-chain there is no upper bound on `deadline`).
+
+**What the signer cannot do.**
+- **Move tokens directly.** The signer has no token approval, no role, no admin capability. The only on-chain effect of their signature is to gate the call to `cleanupBatch`.
+- **Bypass `minBnbOut`.** The user-supplied `minBnbOut` is a separate `cleanupBatch` argument, not part of the signed payload. A forged signature still has to clear the user's slippage guard; if the user submits an honest `minBnbOut`, the batch reverts when actual BNB received is below.
+- **Mint past `MAX_MINT_PER_DAY` (I-02) or `MAX_SUPPLY` (I-01).** Both are on-chain caps enforced by `GuardiansToken.mintReward(...)`.
+- **Replay an old signature.** Each signature consumes the user's nonce (I-15) and expires at its `deadline`.
+
+**On-chain bounds.** The protocol-level worst case is therefore bounded by the *product* of: (a) `MAX_MINT_PER_DAY` per UTC day; (b) the 48 h Timelock rotation window; (c) the per-user nonce cadence (a single user can be the target of forged authorizations at most `MAX_MINT_PER_DAY / per-batch reward` times per day before downstream `mintReward` reverts). The 2.8M-GOTT figure in AD-07 is the simple product of (a) × 2 days; it is not improvable by signer-side tricks.
+
+**Operational controls (not on-chain enforced).**
+- **HSM or KMS-backed key custody** for the signer service. The protocol's contracts cannot verify how the key is stored.
+- **IP / address allowlist** on the backend signer service so only the official frontend submits authorization requests. *Operational, not on-chain enforced.*
+- **Real-time monitoring** of `CleanupMining.RewardCalculated` events and `GuardiansToken.mintReward` daily totals (via `mintedPerDay(today)`). Deviation from the expected mining curve (per §4.4.4 epoch table) is the primary anomaly signal. *Operational.*
+- **Short signature deadlines** (frontend convention: signed-now + 10–30 minutes). The on-chain contract has no minimum-deadline requirement, so this is purely a frontend/backend discipline. *Operational.*
+- **Emergency pause + rotation** — a single Governor proposal can `pause()` the GarbageCollector *and* `setOracleSigner(newSigner)`. Both are subject to the 48 h Timelock delay.
+
+**Residual.** AD-07 (Med). The 2.8M GOTT worst-case figure is accepted; user funds (existing GOTT holdings) are unaffected by the attack; only the emission stream is at risk.
+
+### §9.4 ScamRegistry `ORACLE_ROLE` Trust Surface
+
+**Where used.** `ScamRegistry.setStatus(token, status)` (`ScamRegistry.sol:L81`) and `setStatusBatch(...)` (`L92`) are gated by `onlyRole(ORACLE_ROLE)`. The role holder writes the canonical on-chain classification (`Unknown` / `Legit` / `Dust` / `Dead` / `Scam` / `Drainer` / `Honeypot`) consumed by `GarbageCollector.cleanupBatch` via `isScamOrDrainer(token)` (§4.2.6, §4.5.5).
+
+**What the keeper can do.**
+- Flip the status of any token, including legitimate tokens, to any of the seven values.
+- Batch-update many tokens in one call via `setStatusBatch`.
+
+**What the keeper cannot do.**
+- **Move funds.** The registry holds zero funds.
+- **Bypass the enum range** (I-04). Solidity ABI decoding rejects values outside `[0..6]` with `Panic(0x21)`.
+- **Erase the audit trail.** `reportCount` (I-05, I-07) is monotonic; `lastUpdated` (I-06) is monotonic. Every write is observable.
+
+**Worst-case impact.**
+- **False positive** (legitimate token mis-flagged as `Scam`/`Drainer`/`Honeypot`): users cannot cleanup that token via `cleanupBatch` (the scam pre-check loop reverts at `GarbageCollector.sol:L196`). They can still dump it via `sendScamToLandfill` (which does not consult the registry — see §4.5.6) at the cost of no reward. Bounded user impact, no fund loss.
+- **False negative** (malicious token mis-flagged as `Legit` / `Dust` / etc.): a malicious token slips past the swap gate into `cleanupBatch._swapTokenToBNB`. ReentrancyGuard + CEI ordering + swap-fail fallback bound the user's loss to that single batch — the user loses up to the batch's input amount of the malicious token (which they intended to lose anyway as part of cleanup). No protocol-level fund loss.
+
+**On-chain bounds.** Enum range (I-04); tamper trail (I-05, I-06, I-07); revocability of `ORACLE_ROLE` by `DEFAULT_ADMIN_ROLE` (= Timelock).
+
+**Operational controls (not on-chain enforced).**
+- **Monitor `StatusUpdated` events** for sudden classification flips on tokens with historical activity. The `oldStatus` / `newStatus` fields plus the `reporter` indexed argument make this a clean indexer target. *Operational.*
+- **Pre-submit review** of `setStatusBatch` calls beyond a threshold size (e.g., > 50 tokens in one tx). The contract has no such cap; the review is procedural.
+- **Key rotation** via Timelock — `grantRole(ORACLE_ROLE, newKeeper)` + `revokeRole(ORACLE_ROLE, oldKeeper)` in a single proposal (48 h delay).
+- **Optional future hardening**: replace the single-keeper EOA with a multisig or a small oracle committee. Not in v0.2.x scope; would be a parameter change post-deploy.
+
+**Residual.** AD-02 (Low). 48 h window of mis-classification accepted because the registry holds zero funds and the worst-case fund-loss path (false negative) is already double-bounded by the cleanup engine's own safety properties.
+
+### §9.5 PancakeRouter / WBNB Trust Boundary
+
+**Where used.** `GarbageCollector._swapTokenToBNB(...)` (`GarbageCollector.sol:L283`) calls `router.swapExactTokensForETH(...)` once per token. The router address is stored as `immutable IPancakeRouter router` (constructor-set at `GarbageCollector.sol:L148`). The WBNB address is stored as `immutable address WBNB` (`L149`) and used as the second hop of every swap path.
+
+**Trust assumption.** The router behaves as a standard Uniswap-V2-style `IRouter02`:
+- `swapExactTokensForETH(amountIn, amountOutMin, path, to, deadline)` transfers `amountIn` of `path[0]` from `msg.sender` (the collector, which has approved the router), executes the swap against the router's configured pair pool, and sends the resulting native asset (BNB) to `to`. If the swap cannot meet `amountOutMin` or any path-internal invariant fails, the entire call reverts.
+- WBNB is the canonical BSC wrapped-native token at the address fixed in the GarbageCollector constructor.
+
+**What the router can do (under the trust assumption).**
+- Quote any exchange rate it likes for any token-to-BNB swap. The collector does not second-guess the rate.
+- Revert any individual swap call.
+- Send back any amount of BNB ≤ its quoted output. The collector measures `address(this).balance` deltas at the batch level (§4.5.6) rather than trusting per-call return values.
+
+**What the router cannot do.**
+- **Be silently swapped.** `router` and `WBNB` are `immutable`. A malicious or upgraded router cannot be injected post-deploy; replacement requires deploying a new `GarbageCollector` and migrating `COLLECTOR_ROLE` on `CleanupMining` to the new instance via a DAO proposal — observable on-chain, queue-gated by Timelock.
+- **Drain the collector via a stale allowance.** On router revert, the collector resets the per-token allowance to zero (`forceApprove(router, 0)` at `GarbageCollector.sol:L305`) before forwarding the token to the landfill. No long-lived approval remains.
+
+**Failure mode handling.** Swap revert is *not* a protocol failure — it is the swap-fail fallback path (AD-08). The collector forwards the token to `landfillVault` and emits `SwapFallbackToLandfill`. The batch continues with the remaining tokens; if aggregate BNB received falls below `minBnbOut`, the whole batch reverts and all token movements unwind via EVM semantics.
+
+**On-chain bounds.** Immutability of `router` + `WBNB`; per-token allowance cleanup; batch-level `minBnbOut`; `nonReentrant` on the calling function.
+
+**Operational controls (not on-chain enforced).**
+- **Monitoring of router operational status** on BSC. If PancakeRouter v2 is paused or deprecated, the collector should be paused via a Governor proposal until a replacement collector is deployed.
+- **Coverage gap (cross-ref §14):** the test suite uses `MockPancakeRouter` (always succeeds at 1:1) and `MockRevertingRouter` (always fails). **There is no fork-test against the real BSC PancakeRouter v2 (`0x10ED43C7…E4cD16Ce`).** Real-token routing on real liquidity pairs — including high-liquidity, low-liquidity, fee-on-transfer, and rebasing tokens — is recommended as audit-firm hardening. Linked to AD-08, AD-09.
+
+**Residual.** Accepted under the assumption of canonical PancakeRouter v2 behaviour. Cross-ref AD-08 (Low–Med) for the user-side UX failure mode and AD-09 (Info) for the per-token slippage trade-off.
+
+### §9.6 User-Supplied ERC-20 Token Trust Boundary
+
+**Where used.** Two paths in the protocol accept arbitrary user-chosen ERC-20 token addresses:
+- `GarbageCollector.cleanupBatch(...)` (the swap-and-reward path), via the `tokens[]` calldata array.
+- `GarbageCollector.sendScamToLandfill(...)` (the explicit dump path), same.
+- `LandfillVault` receives the tokens that fall through either path.
+
+**The protocol does not assume the token is honest, standards-compliant, or non-malicious.** The user is opting into the cleanup of whatever they hold; the protocol's job is to make sure that *no matter what the token does*, neither the protocol nor other users are harmed by including it in a batch.
+
+**Mitigations layered against malicious tokens.**
+
+| Defence | Where | Threat addressed |
+|---|---|---|
+| `SafeERC20` (`forceApprove`, `safeTransfer`, `safeTransferFrom`) | `GarbageCollector._swapTokenToBNB` + LandfillVault outbound paths | Non-standard ERC-20s (missing return values, USDT-style approve-race) |
+| `nonReentrant` on every state-mutating external function | GarbageCollector + Vault | ERC-777-style hook callbacks that re-enter the protocol mid-call |
+| CEI ordering inside `cleanupBatch` and `recordCleanup` | GarbageCollector + CleanupMining | Re-entry via the BNB payout call to `msg.sender` (§4.5.5) |
+| `maxTokensPerCleanup` ≤ `MAX_TOKENS_HARD_CAP = 50` | GarbageCollector | Gas-griefing tokens with deliberately expensive transfer hooks |
+| ScamRegistry pre-check loop | `cleanupBatch` | Tokens previously classified as `Scam` / `Drainer` / `Honeypot` |
+| Swap-fail fallback to landfill | `_swapTokenToBNB` catch branch | Tokens that PancakeRouter cannot route (no liquidity, deflationary edge cases) |
+| Allowance cleanup on swap fail (`forceApprove(router, 0)`) | `_swapTokenToBNB` | Stale-allowance drain after a malicious approve|
+| Token immutability of `router` / `WBNB` / `scamRegistry` | GarbageCollector constructor | Cannot inject a malicious dependency that the user's token weaponizes |
+
+**Known limits (not fully covered by mocks).**
+- **Fee-on-transfer (FoT) tokens.** I-08 holds only for non-FoT tokens (see AD-03). The vault's emitted-amount fields drift from on-chain `balanceOf` deltas. Test fixtures (`MockERC20`) are standard non-FoT.
+- **Rebasing tokens.** Vault accounting (I-10) implicitly assumes total supply does not grow without explicit mint. Rebasing tokens violate this; out-of-scope per token whitelist (§15 once drafted).
+- **ERC-777 / callback-token edge cases.** `nonReentrant` guards re-entry into the same contract path, but does not guard against cross-contract re-entry via the token's `tokensToSend` / `tokensReceived` hooks calling back into a *different* protocol contract. The current protocol surface is shallow enough that no such cross-contract callback exists, but the audit firm should verify this property explicitly.
+- **Tokens with non-standard decimals or that revert on zero-amount transfers.** Handled by `SafeERC20` for zero-amount; non-standard decimals affect `cleanupValueUSD` computation (oracle responsibility, not on-chain).
+
+**On-chain bounds.** ReentrancyGuard, CEI, batch-size cap, scam pre-check, swap-fail fallback. None of these depends on the token being well-behaved.
+
+**Operational controls (not on-chain enforced).** Frontend can warn the user before signing a batch that includes tokens with known FoT / rebasing / callback behaviour. *Operational.*
+
+**Cross-references.** AD-03 (Low — FoT drift), AD-08 (Low–Med — swap-fail UX), §4.5.13 (no fork-test against real BSC token diversity), §4.3.13 (no FoT-token fuzz fixtures), §14 (coverage gaps).
+
+### §9.7 Governance / Timelock Trust Boundary
+
+**Where used.** After Phase B.5, every admin role on every protocol contract is held by the Timelock. After Phase B.6 (deployer renounces `DEFAULT_ADMIN_ROLE` on the Timelock), the Timelock itself can only be reconfigured by proposals targeting itself with the full 48 h delay.
+
+**What governance can do.**
+- Rotate `oracleSigner` (`GarbageCollector.setOracleSigner`).
+- Rotate `ORACLE_ROLE` keeper (`ScamRegistry.grantRole` + `revokeRole`).
+- Re-point `miningContract`, `landfillVault` on the collector (mutable wiring).
+- Change `baseRate`, `tierBronze`, `tierSilver` on CleanupMining.
+- Change `maxTokensPerCleanup`, `swapDeadlineBuffer`, `minCleanupValueUSD` on the collector.
+- Pause / unpause any of the five core contracts.
+- Burn or transfer any landfilled token via `LandfillVault.burnToken` / `transferToken`.
+- Sweep the vault's full balance of any token via `emergencyWithdraw` (currently bypassing pause but still 48 h-gated because the role is held by the Timelock — see AD-04).
+- Withdraw stuck BNB from the collector via `withdrawStuckBNB`.
+- Mint up to `MAX_SUPPLY` via the token's `MINTER_ROLE` (held by the Timelock post-B.5).
+- Modify governance parameters (`votingDelay`, `votingPeriod`, `proposalThreshold`, `quorumNumerator`) via self-proposal (I-17).
+- Modify Timelock `_minDelay` via self-proposal (I-16).
+
+**What governance cannot do.**
+- **Bypass `MAX_SUPPLY` (I-01).** Even Timelock-routed `mint` calls are subject to the cap.
+- **Bypass the 48 h delay.** Every proposal queues for at least the configured `_minDelay`.
+- **Execute without observability.** Open executor (AD-10) means every queued proposal is publicly executable — execution is therefore *publicly observable* before it lands.
+
+**Trust assumption (operational).** The protocol assumes that:
+- The Governor parameters (4 % quorum, 100k GOTT proposal threshold) produce a healthy proposal cadence. If voter participation collapses, the protocol cannot self-amend.
+- Community / monitoring catches malicious proposals during the 48 h queue window. There is no on-chain post-vote review checkpoint (AD-10). *Operational.*
+- BSC block production stays within the variance range that keeps the 7-day voting period operationally meaningful (AD-11). *Operational.*
+
+**On-chain bounds.** 48 h Timelock delay; Governor vote thresholds; `MAX_SUPPLY` and `MAX_MINT_PER_DAY` caps; `onlyGovernance` modifier on parameter changes (I-17); `_minDelay` self-bound (I-16).
+
+**Operational controls (not on-chain enforced).** Community proposal-review watchers; documentation / runbook for "malicious proposal nears execution" (§13 once drafted); off-chain coordination of voters.
+
+**Residual.** Accepted. AD-10 (Info — open executor) and AD-11 (Info — BSC block-time variance) cover the two non-obvious aspects.
+
+### §9.8 Bootstrap Trust Window (Phase A & Phase B before final lock)
+
+**Where used.** During the deployment ritual, the deployer EOA holds powerful roles transitionally:
+
+- **Phase A (A.1 through A.9):** Deployer is `DEFAULT_ADMIN_ROLE`, `MINTER_ROLE`, `PAUSER_ROLE`, `ORACLE_ROLE`, `DAO_ROLE`, `EMERGENCY_ROLE`, and `ADMIN_ROLE` across all five core contracts. Required to wire cross-contract addresses and grant the two contract-bound roles (`CLEANUP_MINER_ROLE`, `COLLECTOR_ROLE`).
+- **Phase B.1 through B.4:** Deployer also holds `DEFAULT_ADMIN_ROLE` on the freshly-deployed Timelock — used to grant `PROPOSER_ROLE` and `CANCELLER_ROLE` to the Governor.
+- **Phase B.5:** `scripts/transferAdminRoles.js` cuts over: grants Timelock all admin/operational roles, revokes them from deployer. After B.5 the deployer no longer holds *protocol* roles, but still holds `DEFAULT_ADMIN_ROLE` on the Timelock itself.
+- **Phase B.6:** Deployer renounces `DEFAULT_ADMIN_ROLE` on the Timelock — final self-lock. After this, no EOA holds any admin role anywhere in the protocol.
+
+**Risk during the window.** If the deployer key is compromised *before* B.6, the attacker holds the same authority as the deployer:
+- Pre-B.5: full protocol admin authority on the core contracts.
+- Between B.5 and B.6: only `DEFAULT_ADMIN_ROLE` on the Timelock (reducing `_minDelay` or transferring Timelock admin to an attacker-controlled address).
+
+**Mitigations.**
+- **`scripts/transferAdminRoles.js`** is idempotent — re-runnable if interrupted; tested in `test/RoleTransfer.test.js` (12 tests) covering grant + revoke ordering, idempotency under partial-state re-runs, and the deliberate skipping of `CLEANUP_MINER_ROLE` / `COLLECTOR_ROLE` (see §5.3).
+- **The B.5 cutover is publicly observable** — every grant + revoke emits `RoleGranted` / `RoleRevoked`. The audit firm can sample the chain post-cutover to verify state.
+- **B.6 is a single `renounceRole` call** — minimal surface to get wrong.
+- **The deployer key is operationally expected to be a hardware wallet or HSM during Phases A and B.** *Operational, not on-chain enforced.*
+
+**Cross-references.** §3.3 (Phase A/B/C lifecycle), §5 Role Matrix (§5.2 transfer-ref column points to `scripts/transferAdminRoles.js` line numbers).
+
+**Trust window length.** Phase A through B.6 is intended to execute within hours, not days, of the initial deployment. The longer the deployer key holds these roles, the larger the operational risk. The audit firm should verify that the deployment runbook (per §12 once drafted, and `docs/DEPLOYMENT.md` when created) specifies same-session execution of Phases A and B.
+
+### §9.9 Trust Assumption Matrix (consolidated summary)
+
+| Trust surface | On-chain bounded? | Off-chain operational control? | Residual risk | Section / AD / invariant refs |
+|---|---|---|---|---|
+| `oracleSigner` EOA forging `CleanupAuthorization` | ✅ Bounded by `MAX_SUPPLY`, `MAX_MINT_PER_DAY`, per-user nonce, deadline expiry, Timelock rotation | ⚠️ HSM custody + mint-event monitoring + frontend deadline discipline | Up to ≈ 2.8M GOTT (0.28 % MAX_SUPPLY) forgeable mint during 48 h rotation window | §9.3, AD-07 (Med), I-01, I-02, I-15 |
+| `ORACLE_ROLE` keeper EOA on ScamRegistry | ✅ Enum range, tamper trail, revocability | ⚠️ Event monitoring + batch-size review + key rotation | Up to 48 h of mis-classification across an arbitrary token set; **no fund movement** | §9.4, AD-02 (Low), I-04, I-05, I-06, I-07 |
+| PancakeRouter v2 behaviour (canonical Uniswap-V2 semantics) | ⚠️ Partial — router is immutable, allowance cleanup, batch `minBnbOut` | ⚠️ Off-chain monitoring of router operational status; no fork-test against real router in current suite | Swap-failure UX cost to user; protocol-level fund-loss surface bounded by `minBnbOut` | §9.5, AD-08 (Low–Med), AD-09 (Info), §4.5.13 (coverage gap) |
+| Canonical WBNB address on BSC | ✅ Immutable in constructor | — | Zero — WBNB is part of BSC's protocol layer | §9.5 |
+| Arbitrary user-supplied ERC-20 tokens | ✅ ReentrancyGuard, CEI, batch cap, SafeERC20, scam pre-check, swap-fail fallback | ⚠️ Frontend warnings for FoT / rebasing / callback tokens | FoT amount-vs-event drift in vault; per-batch user-side loss bounded by `minBnbOut` | §9.6, AD-03 (Low), AD-08 (Low–Med), §4.3.13 + §4.5.13 (coverage gaps) |
+| Governor + Timelock (post-B.5) | ✅ 48 h delay, `MAX_SUPPLY`, `onlyGovernance` for self-amendment, role revocability | ⚠️ Community vote turnout + proposal-watch + voting-period block-time variance | A malicious proposal that passes vote + survives 48 h queue can drain or reconfigure the protocol | §9.7, AD-10 (Info), AD-11 (Info), I-16, I-17 |
+| Deployer EOA during bootstrap (Phase A + B before B.6) | ❌ **Not on-chain bounded** — deployer holds full admin power across all contracts until B.5, plus Timelock admin until B.6 | ⚠️ Hardware wallet / HSM custody; same-session execution of Phases A and B; idempotent `transferAdminRoles.js` | Full protocol takeover if the deployer key is compromised before B.6 | §9.8, §3.3, §5 Role Matrix, I-16 (post-B.6 only) |
+| `EMERGENCY_ROLE` on LandfillVault (currently Timelock; future-state separate multisig per AD-04) | ⚠️ Subject to 48 h Timelock delay in current deployment — the "fast circuit breaker" advantage is **not realized in v0.2.x** | ⚠️ Future-state multisig provisioning + signer onboarding | A Timelock-routed exploit can drain the vault even while paused | §9.2 row 5, AD-04 (Low), I-08, I-09, I-10 |
+
+**Reading the matrix:**
+- ✅ in the "On-chain bounded?" column means the worst-case action is bounded by code, not by hope.
+- ⚠️ means partial or layered — the column "Off-chain operational control?" is then load-bearing for the residual.
+- ❌ means the surface is *not* bounded on-chain. The only such surface in the protocol is the **deployer EOA during the bootstrap window** (§9.8). Every other surface has an on-chain bound; operational controls are layered defence-in-depth rather than sole protection.
+
+The audit firm's operational-readiness checklist should therefore concentrate on: (a) the bootstrap key custody and runbook execution, (b) the two off-chain EOA hot keys (`oracleSigner` and `ORACLE_ROLE` keeper), and (c) the community / monitoring discipline that backs AD-10's "execution is observable" assumption.
 
 ---
 
