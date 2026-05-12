@@ -2,7 +2,7 @@
 
 > **Status:** Pre-audit internal review. Intended for an external audit firm (SolidProof / Hacken tier) with no prior project context.
 > **Commit under review:** `8a80b35` (main).
-> **Document version:** Draft 0.4 — §4 + §5 + §10 (AD-02..AD-11 body) complete; test counts reconciled (193 Hardhat + 54 Foundry); §6 body, §7, §8, §9, §11, §12, §13, §14, §15, §16, §1 pending.
+> **Document version:** Draft 0.5 — §4 + §5 + §6 (registry + body proof-sketches) + §10 (AD-02..AD-11 body) complete; test counts reconciled (193 Hardhat + 54 Foundry); §7, §8, §9, §11, §12, §13, §14, §15, §16, §1 pending.
 
 ---
 
@@ -16,7 +16,7 @@
 
 This section tracks the internal drafting state. It is **not** part of the deliverable to the audit firm; it will be deleted in the Draft 1.0 cut.
 
-### Done in this revision (Draft 0.4)
+### Done in this revision (Draft 0.5)
 
 | Section | Status | Notes |
 |---|---|---|
@@ -30,7 +30,7 @@ This section tracks the internal drafting state. It is **not** part of the deliv
 | §4.6 GuardiansTimelockController | ✅ Complete | Vanilla OZ wrapper (24 LoC). AD-10 (open executor) forward-ref'd to §10. |
 | §4.7 GuardiansGovernor | ✅ Complete | OZ module composition (151 LoC, 9 required overrides). AD-11 (BSC block-time variance) forward-ref'd to §10. |
 | §5 Role Matrix | ✅ Complete | Consolidated table across 7 contracts + 4 post-table notes (contract-bound roles, hot keys, pause asymmetry, roleless Governor). |
-| §6 Invariant ID registry | ✅ Stub complete | I-01..I-17. Body proof-sketches pending. |
+| §6 System Invariants (registry + body proof-sketches) | ✅ Complete | Registry I-01..I-17 plus §6.1-§6.6 body. Each invariant covered with 6-element format (Statement / Why it matters / Enforcement / Verification / Assumptions / Failure mode blocked). Coverage gaps honestly flagged for I-15 (no dedicated `invariant_*`), I-16 (OZ Timelock property, no Foundry invariant), I-17 (no end-to-end self-amendment test). Cross-refs: AD-03 (I-08 FoT limit), AD-06 (I-02 UTC bucket), AD-07 (I-02 / I-15 bound). |
 | §10 Acknowledged Design Decisions (body) | ✅ Complete | AD-02..AD-11 drafted using the 9-element format (Title / Severity / Affected / Decision / Rationale / Risk / Mitigation / Residual / Cross-ref). AD-01 reserved for the highest-priority external-audit finding. Severities: AD-02..AD-04 Low, AD-05/AD-06/AD-09/AD-10/AD-11 Info, AD-07 Med, AD-08 Low–Med. |
 | Test count reconciliation | ✅ Done | **193 Hardhat + 54 Foundry = 247 total, 100% pass.** Run output: 0 failed, 0 skipped. Earlier 167+35 scan was undercount; PR-claimed 193+54 verified. Per-file: GuardiansToken 40/11, ScamRegistry 29/9, LandfillVault 27/10, CleanupMining 38/10, GarbageCollector 32/9, Governance 15/5, RoleTransfer 12/—. |
 
@@ -38,17 +38,16 @@ This section tracks the internal drafting state. It is **not** part of the deliv
 
 | Order | Section | Estimated complexity | Blocker / dependency |
 |---|---|---|---|
-| 1 | §6 body proof-sketches | Medium — one paragraph per invariant I-01..I-17 | Registry stub already done. |
-| 2 | §9 Trust Assumptions & Oracle Surface | Medium — formalises the two "hot key" surfaces (`oracleSigner`, `ORACLE_ROLE`) and PancakeRouter trust boundary | Pulls from §4.5.4, §5.3 hot-key table, §3.4, and §10 AD-07/AD-02. |
-| 3 | §7 External Call Graph | Low–Medium — diagrams already partially in §3.2; this section is the formal version with arrow direction + role gates | None. |
-| 4 | §11 Gas & DoS Surface | Medium — covers `MAX_TOKENS_HARD_CAP = 50`, the per-batch loops in `cleanupBatch`, registry write fan-out | Benefits from real-token fork tests (§4.5.13 gap). |
-| 5 | §8 Storage Layout & Upgrade Story | Low — protocol is non-upgradeable; section states this and walks each contract's storage layout for completeness | None. |
-| 6 | §13 Emergency Response | Medium — playbook for AD-07 (oracle key compromise), AD-02 (ORACLE_ROLE compromise), router incident, Timelock-stuck proposal, paused-vault recovery | §9 + §10 already drafted. |
-| 7 | §14 Test Coverage Summary | Low — write up the verified 193+54 numbers + coverage-gap rollup from §4.X.13 cells | Test counts already verified. |
-| 8 | §15 Out of Scope | Low — short list (off-chain signer infra, ORACLE_ROLE keeper service, frontend) | None. |
-| 9 | §16 Appendices (Glossary, EIP-712, Reward Formula derivation, Build & Reproducibility, Repo refs) | Medium | Reward-formula derivation pulls from §4.4.12 inline rationale + AD-05. |
-| 10 | §12 Deployment Reference | Low — short stub + link to `docs/DEPLOYMENT.md` | **Blocker: `docs/DEPLOYMENT.md` does not yet exist.** Create alongside §12 drafting. |
-| 11 | §1 Document Purpose | Low | Write **last**, after every other section is final. |
+| 1 | §9 Trust Assumptions & Oracle Surface | Medium — formalises the two "hot key" surfaces (`oracleSigner`, `ORACLE_ROLE`) and PancakeRouter trust boundary | Pulls from §4.5.4, §5.3 hot-key table, §3.4, and §10 AD-07/AD-02. |
+| 2 | §7 External Call Graph | Low–Medium — diagrams already partially in §3.2; this section is the formal version with arrow direction + role gates | None. |
+| 3 | §11 Gas & DoS Surface | Medium — covers `MAX_TOKENS_HARD_CAP = 50`, the per-batch loops in `cleanupBatch`, registry write fan-out | Benefits from real-token fork tests (§4.5.13 gap). |
+| 4 | §8 Storage Layout & Upgrade Story | Low — protocol is non-upgradeable; section states this and walks each contract's storage layout for completeness | None. |
+| 5 | §13 Emergency Response | Medium — playbook for AD-07 (oracle key compromise), AD-02 (ORACLE_ROLE compromise), router incident, Timelock-stuck proposal, paused-vault recovery | §9 + §10 already drafted. |
+| 6 | §14 Test Coverage Summary | Low — write up the verified 193+54 numbers + coverage-gap rollup from §4.X.13 cells | Test counts already verified. |
+| 7 | §15 Out of Scope | Low — short list (off-chain signer infra, ORACLE_ROLE keeper service, frontend) | None. |
+| 8 | §16 Appendices (Glossary, EIP-712, Reward Formula derivation, Build & Reproducibility, Repo refs) | Medium | Reward-formula derivation pulls from §4.4.12 inline rationale + AD-05. |
+| 9 | §12 Deployment Reference | Low — short stub + link to `docs/DEPLOYMENT.md` | **Blocker: `docs/DEPLOYMENT.md` does not yet exist.** Create alongside §12 drafting. |
+| 10 | §1 Document Purpose | Low | Write **last**, after every other section is final. |
 
 ### Design acceptances catalog (§10 body now drafted — all severities user-ack'd)
 
@@ -721,9 +720,9 @@ Cross-reference to §6 invariants: I-04 (status enum range), I-05 (reportCount m
 
 ---
 
-## §6 System Invariants — Registry
+## §6 System Invariants
 
-> **Status:** Registry skeleton only. The detailed body (proof sketches, attack-scenarios-each-invariant-blocks) is filled in the §6 draft pass. The registry below is updated incrementally as each §4.X contract is completed, so cross-references in §4 always resolve.
+The protocol declares 17 invariants spanning the token, registry, vault, mining, collector, and governance layers. This section opens with the canonical **invariant index** (used for cross-references throughout the document), followed by per-layer body proof-sketches in §6.1–§6.6.
 
 The registry is the canonical source for invariant IDs used throughout this document. The columns are:
 
@@ -756,14 +755,265 @@ The registry is the canonical source for invariant IDs used throughout this docu
 | I-17 | Governor parameter changes (`votingDelay`, `votingPeriod`, `proposalThreshold`, `quorumNumerator`) are `onlyGovernance` — i.e., changeable only via a self-proposal executed by the Timelock | Governor | *not exercised end-to-end in current test suite — coverage gap flagged in §4.7.13* | Property of the OZ `GovernorSettings` + `GovernorVotesQuorumFraction` modules. |
 | *I-18+ reserved for §6 body-draft additions if needed* | | | | |
 
-### Sub-section placeholders (to be filled in §6 body draft)
+### §6.1 Token-layer invariants (I-01..I-03)
 
-- §6.1 Token-layer invariants (I-01..I-03) — proof sketches
-- §6.2 Registry-layer invariants (I-04..I-07) — proof sketches
-- §6.3 Vault-layer invariants (I-08..I-10) — proof sketches
-- §6.4 Mining-layer invariants — proof sketches *[pending §4.4]*
-- §6.5 Collector-layer invariants — proof sketches *[pending §4.5]*
-- §6.6 Governance-layer invariants — proof sketches *[pending §4.6 + §4.7]*
+#### I-01 — `totalSupply()` never exceeds `MAX_SUPPLY`
+
+**Statement.** At every block, `GuardiansToken.totalSupply() <= MAX_SUPPLY`, where `MAX_SUPPLY = 1,000,000,000 × 10¹⁸ wei` (`GuardiansToken.sol:L45`).
+
+**Why it matters.** Single hard cap on GOTT issuance. Bounds tokenomics, governance quorum (`GovernorVotesQuorumFraction` uses `getPastTotalSupply` as quorum denominator — §4.7.10), and every economic model that quotes the 1B published cap. Violation would silently dilute holders and break protocol-wide trust.
+
+**Enforcement mechanism.** Three mint paths, each pre-checked with `ExceedsMaxSupply(requested, available)`: `distributeInitial(...)` at `GuardiansToken.sol:L120`, `mint(...)` at `L142`, `mintReward(...)` at `L175`. The `mintReward` re-check is intentional — `MAX_MINT_PER_DAY` bounds the per-call rate, but `MAX_SUPPLY` is the unconditional ceiling. The two caps are layered, not alternatives.
+
+**Verification coverage.** Foundry: `test-foundry/GuardiansToken.t.sol::invariant_totalSupplyNeverExceedsMaxSupply` (handler-driven across all three mint paths). Hardhat: `test/GuardiansToken.test.js → describe("mint") → it("rejects mint exceeding MAX_SUPPLY")` and `→ describe("CLEANUP_MINER mint") → it("respects MAX_SUPPLY hard cap (re-checked even under daily cap)")`.
+
+**Assumptions / limits.** Solidity 0.8.x checked arithmetic prevents `totalSupply() + amount` overflow (the addition itself reverts before the comparison).
+
+**Failure mode blocked.** Any compromise of `MINTER_ROLE` or `CLEANUP_MINER_ROLE` cannot drive supply past 1B GOTT, regardless of time or gas. AD-07 (compromised `oracleSigner` forging `cleanupBatch` authorizations) is double-bounded — by `MAX_MINT_PER_DAY` over the response window and by `MAX_SUPPLY` in the limit.
+
+#### I-02 — `mintedPerDay[day] <= MAX_MINT_PER_DAY` per UTC day
+
+**Statement.** For every UTC-day bucket `day = block.timestamp / 86400`, the cumulative mint via `mintReward` satisfies `mintedPerDay[day] <= MAX_MINT_PER_DAY = 1,400,000 × 10¹⁸ wei` (`GuardiansToken.sol:L46`).
+
+**Why it matters.** Protocol-level bound on cleanup-mining emission rate. Load-bearing protection against `oracleSigner` compromise (AD-07): even with forged signatures, an attacker cannot mint more than 1.4M GOTT per UTC day. Without this cap, AD-07's residual risk would be the full `MAX_SUPPLY` instead of the bounded ~2.8M-over-48h figure.
+
+**Enforcement mechanism.** `mintReward(...)` (`GuardiansToken.sol:L163`) computes `day = block.timestamp / 1 days` (`L172`), checks `mintedPerDay[day] + amount > MAX_MINT_PER_DAY` (`L173`), then increments before `_mint`. The accumulator is mapping-keyed — buckets self-reset each UTC midnight as the key changes.
+
+**Verification coverage.** Foundry: `test-foundry/GuardiansToken.t.sol::invariant_dailyCapNeverExceeded` (handler-driven with warp-day). Hardhat: `test/GuardiansToken.test.js → describe("CLEANUP_MINER mint") → it("mints up to exact daily cap (1.4M)")`, `it("reverts single-call exceeding daily cap with DailyMintCapExceeded")`, `it("reverts cumulative-call exceeding daily cap")`, and `it("daily cap resets after warping 1 day forward")`.
+
+**Assumptions / limits.** UTC bucket boundary is `block.timestamp / 86400`; validator-influenced by up to ~15 s at BSC block-time variance. Bucket attribution of edge-of-day transactions may differ by one day from wall-clock, but the cap holds per bucket. See AD-06.
+
+**Failure mode blocked.** No actor — including a compromised `CLEANUP_MINER_ROLE` holder or `oracleSigner` — can mint more than 1.4M GOTT in any single UTC day. Bounds AD-07 incident-response cost.
+
+#### I-03 — `initialized` monotonic (false → true, one-shot)
+
+**Statement.** `GuardiansToken.initialized` is monotonically non-decreasing in the boolean order `false < true`. `distributeInitial(...)` succeeds at most once across the contract's lifetime.
+
+**Why it matters.** Guards the TGE allocation flow. Re-running `distributeInitial` after launch would let an admin double-mint the genesis distribution, bypassing the `MAX_SUPPLY` check via timing (two valid calls each individually below the cap can together cross it on a low-supply day).
+
+**Enforcement mechanism.** `distributeInitial(...)` (`GuardiansToken.sol:L105`) reverts with `AlreadyInitialized` if `initialized == true`; otherwise sets `initialized = true` at `L125` before the mint loop. No setter exists.
+
+**Verification coverage.** Foundry: `test-foundry/GuardiansToken.t.sol::invariant_initializedMonotonic` (handler-driven random sequences). Hardhat: `test/GuardiansToken.test.js → describe("distributeInitial") → it("distributes to multiple recipients in a single TX and flips initialized")` and `it("reverts on second call with AlreadyInitialized")`.
+
+**Assumptions / limits.** The flag is set before any external call inside `distributeInitial`, so reentrancy cannot re-enter into a still-`false` state.
+
+**Failure mode blocked.** Double-distribution of the TGE allocation; admin replay of the genesis mint.
+
+---
+
+### §6.2 Registry-layer invariants (I-04..I-07)
+
+#### I-04 — `tokenInfo[t].status` always decodes to a valid enum value
+
+**Statement.** For every token address `t` ever written, `tokenInfo[t].status` decodes to a valid `TokenStatus` enum value in the range `[Unknown=0, Honeypot=6]` (`ScamRegistry.sol:L24-32`).
+
+**Why it matters.** `GarbageCollector.cleanupBatch` consumes the registry via `isScamOrDrainer(token)` (§4.5.5), which performs three enum equality comparisons (`Scam`, `Drainer`, `Honeypot`). An out-of-range value would either match nothing (false negative — scam slips through) or trigger an EVM `Panic(0x21)` propagating into the cleanup path.
+
+**Enforcement mechanism.** Enum decoding is Solidity's built-in: any write of an out-of-range value to a function argument typed `TokenStatus` triggers `Panic(0x21)` before the function body executes. `setStatus(token, status)` (`ScamRegistry.sol:L81`) and `setStatusBatch(...)` (`L92`) both type the input as `TokenStatus`, so the panic fires at ABI decoding.
+
+**Verification coverage.** Foundry: `test-foundry/ScamRegistry.t.sol::invariant_statusInEnumRange` (handler decodes every status read). Hardhat: `test/ScamRegistry.test.js → describe("setStatus") → it("rejects out-of-range enum values (Solidity panic)")`.
+
+**Assumptions / limits.** Compiler version 0.8.24 retains enum-range checks. An `unchecked { }` block would bypass them — no such block exists in this contract.
+
+**Failure mode blocked.** Stored registry corruption that would break downstream `isScamOrDrainer` semantics.
+
+#### I-05 — `reportCount` monotonic per token
+
+**Statement.** For every token `t`, `tokenInfo[t].reportCount` is monotonically non-decreasing across the contract's lifetime. Each successful `_setStatus(t, *)` increments it by exactly 1, including no-op same-status writes.
+
+**Why it matters.** The counter is the on-chain tamper trail for `ORACLE_ROLE` activity. AD-02 acceptance (no `EMERGENCY` backup on ScamRegistry) leans on this — off-chain monitors sample `reportCount` deltas to detect anomalous oracle writes during a key-compromise window.
+
+**Enforcement mechanism.** `_setStatus(token, status)` at `ScamRegistry.sol:L106` increments `tokenInfo[token].reportCount += 1` before emitting `StatusUpdated`. The increment is unconditional on entry. No other path writes `reportCount`.
+
+**Verification coverage.** Foundry: `test-foundry/ScamRegistry.t.sol::invariant_reportCountMonotonic` (handler-driven random `setStatus` sequences). Hardhat: `test/ScamRegistry.test.js → describe("setStatus") → it("increments reportCount on every call (not only on status change)")`.
+
+**Assumptions / limits.** `uint256` overflow at ~2²⁵⁶ is operationally unreachable. No `unchecked` block surrounds the increment.
+
+**Failure mode blocked.** Tamper-trail erasure or rewind via re-write attacks.
+
+#### I-06 — `lastUpdated` monotonic per token
+
+**Statement.** For every token `t`, `tokenInfo[t].lastUpdated` is monotonically non-decreasing — equal to `block.timestamp` at the most recent successful `_setStatus(t, *)` call.
+
+**Why it matters.** Provides on-chain freshness signal for registry classifications. Off-chain consumers (frontend, indexers) use `lastUpdated` to display staleness; auditors use it to correlate `reportCount` deltas with attack windows.
+
+**Enforcement mechanism.** `_setStatus(...)` writes `tokenInfo[token].lastUpdated = block.timestamp` inside the `ScamRegistry.sol:L106` body. The monotonicity follows from `block.timestamp` being non-decreasing across blocks per BSC consensus (`block.timestamp[n] >= block.timestamp[n-1]`).
+
+**Verification coverage.** Foundry: `test-foundry/ScamRegistry.t.sol::invariant_lastUpdatedMonotonic` (compares snapshots across handler operations).
+
+**Assumptions / limits.** Validator timestamp manipulation is bounded to ~15 s on BSC. Two `_setStatus` calls in the same block share the same `lastUpdated` value — equality, not strict increase. No real-world failure mode depends on strict increase within a block.
+
+**Failure mode blocked.** Backdating of registry classifications.
+
+#### I-07 — `reportCount` matches handler-tracked successful writes
+
+**Statement.** For every token `t`, `tokenInfo[t].reportCount` equals the number of successful `_setStatus(t, *)` calls observed by the test harness across the run.
+
+**Why it matters.** I-05 alone asserts monotonicity; I-07 asserts exact-count accuracy. Together they certify that the on-chain counter is a perfect record of writes — no double-counts, no missed increments — under the full random-write surface of the Foundry handler.
+
+**Enforcement mechanism.** Same as I-05: unconditional `+= 1` inside `_setStatus`. I-07 adds the stronger claim that no other branch writes to `reportCount` (no setter, no admin reset, no downstream contract path).
+
+**Verification coverage.** Foundry: `test-foundry/ScamRegistry.t.sol::invariant_reportCountMatchesWrites`. The handler maintains its own counter per token; the invariant asserts `actual == handler_tracked`.
+
+**Assumptions / limits.** Handler-tracked invariants require the handler to model every successful write path. The handler models `setStatus` and `setStatusBatch`. A future PR adding a third write path without updating the handler would be caught by this invariant.
+
+**Failure mode blocked.** Hidden writes to `reportCount` from refactor-introduced code paths.
+
+---
+
+### §6.3 Vault-layer invariants (I-08..I-10)
+
+#### I-08 — Vault balance equals received minus moved-out
+
+**Statement.** For every ERC-20 `token` ever interacted with, `balanceOf(vault, token) == sum_received(token) − sum_movedOut(token)` under handler-tracked accounting, where `sum_received` totals transfers into the vault and `sum_movedOut` totals `burnToken` / `transferToken` / `emergencyWithdraw` amounts.
+
+**Why it matters.** Load-bearing accounting invariant for the vault — certifies that the vault is pure custody: tokens neither materialize from nothing nor evaporate into nowhere. Any divergence exposes either a phantom-mint surface or a phantom-burn, both of which would compromise DAO accounting of the landfill treasury.
+
+**Enforcement mechanism.** The vault has no `transferFrom`-pull behaviour — tokens arrive only via direct ERC-20 `transfer` from external callers (§4.3 inbound paths). Outbound paths are exactly three: `burnToken` (`LandfillVault.sol:L75`), `transferToken` (`L92`), `emergencyWithdraw` (`L117`). No other write to `balanceOf` from the vault's side.
+
+**Verification coverage.** Foundry: `test-foundry/LandfillVault.t.sol::invariant_balanceAccounting`. Handler maintains shadow `sum_received` and `sum_movedOut` per token; the invariant asserts equality with on-chain `balanceOf`.
+
+**Assumptions / limits.** **Holds only for non-fee-on-transfer tokens — see AD-03.** For FoT tokens, the on-chain `balanceOf` delta differs from the requested `amount` argument by the fee rate; the handler records the requested amount (the emitted-event side), so equality breaks. Test fixtures use `MockERC20` (no FoT); fork-test coverage with real FoT tokens is the recommended audit-firm hardening (§4.5.13).
+
+**Failure mode blocked.** Phantom-mint or phantom-burn surface introduced by future vault-side state writes.
+
+#### I-09 — Action conservation across the three outbound paths
+
+**Statement.** For every token, `sum_movedOut(token) == sum_burned + sum_transferred + sum_emergencyWithdrawn`, where each summand totals the handler-recorded amounts for the respective outbound function.
+
+**Why it matters.** Asserts that the three outbound paths are exhaustive — no fourth path drains the vault. Tightens I-08 from "incoming minus outgoing" to "incoming minus exactly these three classes of outgoing."
+
+**Enforcement mechanism.** Static contract surface: `burnToken`, `transferToken`, `emergencyWithdraw` are the only functions that call `IERC20.safeTransfer` from the vault address (`LandfillVault.sol:L75`, `L92`, `L117`). No other code path touches `IERC20`.
+
+**Verification coverage.** Foundry: `test-foundry/LandfillVault.t.sol::invariant_movedOutEqualsSumOfActions`. Handler counts each function call separately; the invariant asserts the three counters sum exactly to total moved-out.
+
+**Assumptions / limits.** Pure structural property of the contract surface — no additional assumptions.
+
+**Failure mode blocked.** Hidden fourth outbound path added by a future PR that isn't categorised in handler bookkeeping.
+
+#### I-10 — Vault balance bounded by initial mint
+
+**Statement.** For every token, `balanceOf(vault, token) <= initialMint(token)`, where `initialMint(token)` is the total amount minted to the test universe for that token across the run.
+
+**Why it matters.** Asserts no creation from nothing inside the vault — the vault cannot somehow inflate a token's supply by holding it.
+
+**Enforcement mechanism.** The vault has no mint path — it implements only `safeTransfer`-out and accepts `safeTransfer`-in. The ERC-20 supply is set entirely by the test harness's `MockERC20.mint(...)` calls; `balanceOf(vault, token)` cannot exceed the cumulative mint of `token`.
+
+**Verification coverage.** Foundry: `test-foundry/LandfillVault.t.sol::invariant_vaultBalanceCappedByInitialMint`. Handler tracks total mint; the invariant asserts vault balance ≤ minted total.
+
+**Assumptions / limits.** Holds for standard ERC-20s. Rebasing tokens (whose `balanceOf` can grow without explicit mint) would violate the spirit of this invariant — out of scope per protocol token whitelist (see §15 once drafted).
+
+**Failure mode blocked.** Sanity check against any future refactor that accidentally introduces a vault-side mint or balance-rewrite path.
+
+---
+
+### §6.4 Mining-layer invariants (I-11..I-14)
+
+#### I-11 — `totalRewardsEarned[u]` monotonic per user
+
+**Statement.** For every user `u`, `totalRewardsEarned[u]` is monotonically non-decreasing across `recordCleanup(...)` calls.
+
+**Why it matters.** Cumulative reward bookkeeping must never decrease — frontends and indexers display `totalRewardsEarned[u]` as a lifetime stat. A decrement would surface as a negative-reward UX bug; an admin reset would corrupt user trust.
+
+**Enforcement mechanism.** `recordCleanup(...)` (`CleanupMining.sol:L128`) increments `totalRewardsEarned[user] += reward` after the reward calc. No setter, no admin reset path, no other write to the mapping.
+
+**Verification coverage.** Foundry: `test-foundry/CleanupMining.t.sol::invariant_userRewardsMonotonic`. Handler keeps a shadow per-user max; the invariant asserts on-chain ≥ shadow at every step.
+
+**Assumptions / limits.** Reward can be zero (post-Epoch-3 — `epochMultiplier == 0`), in which case the field is unchanged but still non-decreasing. `uint256` overflow at ~2²⁵⁶ is operationally unreachable.
+
+**Failure mode blocked.** Reward rollback or admin reset of user lifetime totals.
+
+#### I-12 — Σ rewards matches mined GOTT
+
+**Statement.** `Σ over users u of totalRewardsEarned[u]` equals the total GOTT minted via the cleanup-mining path under handler tracking — i.e., the sum of bookkeeping balances reconciles to the on-chain `_mint`-ed amount.
+
+**Why it matters.** The mining path is the protocol's emission firehose: every GOTT minted as cleanup reward must have a matching entry in `totalRewardsEarned`. A divergence would indicate either (a) a silent mint without bookkeeping (silent inflation), or (b) bookkeeping without mint (phantom rewards displayed to users). Both compromise emission accounting and dilute trust in `mintReward`'s daily-cap enforcement (I-02).
+
+**Enforcement mechanism.** `recordCleanup(...)` at `CleanupMining.sol:L128` performs three writes atomically: `totalRewardsEarned[user] += reward`, the cleanup-count bookkeeping (see I-13), and `gott.mintReward(user, reward)` (the external call, guarded by `nonReentrant`). The order is bookkeeping-first, mint-last (CEI per §4.4.5). If the external call reverts, all bookkeeping reverts with it.
+
+**Verification coverage.** Foundry: `test-foundry/CleanupMining.t.sol::invariant_totalRewardsMatchTokenBalance`. The handler tracks every successful `recordCleanup` reward; the invariant asserts that the sum equals the cleanup-mining minted balance on the token.
+
+**Assumptions / limits.** Tracks only the cleanup-mining path. TGE distribution and treasury `mint` are excluded from this invariant (they have their own cap-checking via I-01).
+
+**Failure mode blocked.** Silent emission via a path that mints without bookkeeping; phantom reward displays without an actual mint.
+
+#### I-13 — Global cleanup count equals per-epoch sum
+
+**Statement.** `totalCleanupsExecuted == Σ over (user, epoch) of cleanupCountPerEpoch[u][e]`.
+
+**Why it matters.** Cross-checks two independent counters that must always agree. `totalCleanupsExecuted` is the protocol-wide count; `cleanupCountPerEpoch[u][e]` is the per-user-per-epoch leaderboard data. A divergence would indicate that one counter was incremented and not the other — a bug in `recordCleanup` write atomicity.
+
+**Enforcement mechanism.** `recordCleanup(...)` (`CleanupMining.sol:L128`) increments both counters in the same function body without any branch that could skip one. Both writes are inside the `nonReentrant + whenNotPaused + onlyRole(COLLECTOR_ROLE)` envelope.
+
+**Verification coverage.** Foundry: `test-foundry/CleanupMining.t.sol::invariant_globalCountMatchesPerEpochSum`. The invariant iterates all (user, epoch) cells the handler has touched and asserts the sum equals `totalCleanupsExecuted`.
+
+**Assumptions / limits.** None — pure cross-counter consistency.
+
+**Failure mode blocked.** Future PR that adds a code path mutating one counter without the other.
+
+#### I-14 — `getCurrentEpoch()` monotonic
+
+**Statement.** `getCurrentEpoch()` is monotonically non-decreasing over time: `getCurrentEpoch[block n] >= getCurrentEpoch[block n-1]`.
+
+**Why it matters.** Asserts the epoch clock never rolls back. The cleanup-mining reward formula multiplies by `epochMultiplier`, which is a function of epoch index — a rollback would silently re-enable past higher reward multipliers and inflate emission.
+
+**Enforcement mechanism.** `getCurrentEpoch()` (`CleanupMining.sol:L221`) returns `(block.timestamp − LAUNCH_TIMESTAMP) / EPOCH_DURATION`. `LAUNCH_TIMESTAMP` is `immutable` (set in constructor); `block.timestamp` is non-decreasing across blocks per BSC consensus. The integer division is monotonic in its numerator.
+
+**Verification coverage.** Foundry: `test-foundry/CleanupMining.t.sol::invariant_epochMonotonic` (with `warpEpoch` handler advancing time). Also exercised by `testFuzz_epochAdvancesMonotonic`.
+
+**Assumptions / limits.** Validator timestamp manipulation is bounded to ~15 s on BSC. Two epoch boundaries cannot be crossed back-to-back via timestamp tricks, since `EPOCH_DURATION = 180 days >> 15 s`.
+
+**Failure mode blocked.** Reward multiplier rollback via clock manipulation.
+
+---
+
+### §6.5 Collector-layer invariants (I-15)
+
+#### I-15 — `nonces[u]` monotonic, +1 per cleanupBatch, unaffected by sendScamToLandfill
+
+**Statement.** For every user `u`, `GarbageCollector.nonces[u]` is monotonically non-decreasing; increments by exactly 1 on each successful `cleanupBatch(...)`; remains unchanged across any call to `sendScamToLandfill(...)`.
+
+**Why it matters.** The nonce is the EIP-712 replay-protection mechanism for the entire cleanup engine. AD-07 (compromised `oracleSigner`) is bounded by `MAX_MINT_PER_DAY` (I-02) only if forged signatures cannot be replayed past one consumption. A nonce that skipped, double-counted, or reset would either invalidate legitimately-signed authorizations the backend has already issued (breaking user UX) or allow signature reuse, breaking the AD-07 bound by letting the same forgery mint repeatedly within a single day.
+
+**Enforcement mechanism.** `_verifyAndConsumeAuth(...)` at `GarbageCollector.sol:L228` reads `expected = nonces[msg.sender]`, asserts `nonce == expected` (revert `InvalidNonce` otherwise), verifies the EIP-712 signature, then writes `nonces[msg.sender] = expected + 1` at `L250`. The write is the last operation in the helper, immediately before `cleanupBatch` proceeds to swap and reward. `sendScamToLandfill(...)` does not call this helper and does not read or write `nonces`.
+
+**Verification coverage.** **No dedicated `invariant_*` handler exists.** The property is covered *implicitly* by replay-blocking tests: Foundry `test-foundry/GarbageCollector.t.sol::testFuzz_replayBlocked`; Hardhat `test/GarbageCollector.test.js → describe("cleanupBatch — signature semantics") → it("rejects replay: same signature on second call (nonce already consumed)")` and `→ describe("sendScamToLandfill") → it("does not consume cleanupBatch nonce")`. **This is a coverage gap, flagged in §4.5.13.** The audit firm may reasonably request a handler-tracked Foundry invariant of the shape `nonces[u] == handler.successfulCleanupBatchCount[u]` after every step.
+
+**Assumptions / limits.** The implicit coverage exercises a single round-trip per user. Until a dedicated invariant exists, the assumption is that any refactor of the `+= 1` discipline will be caught by code review rather than by an automated property check.
+
+**Failure mode blocked.** EIP-712 signature replay against the cleanup engine; nonce-reset attacks that would silently unblock previously-consumed signatures.
+
+---
+
+### §6.6 Governance-layer invariants (I-16..I-17)
+
+#### I-16 — Timelock `_minDelay >= 48h`
+
+**Statement.** `GuardiansTimelockController._minDelay >= 48 hours` for the lifetime of the protocol. Reduction below 48 h requires a self-proposal that itself clears the existing 48 h delay.
+
+**Why it matters.** The 48 h delay is the load-bearing protocol-wide review window. It bounds AD-07 (oracle-key rotation cycle), AD-02 (scam-classifier rotation cycle), and AD-10 (post-vote review window before open execution).
+
+**Enforcement mechanism.** **No Foundry invariant** — the property is enforced by the OZ `TimelockController` parameter machinery. `updateDelay` is `onlyRoleOrOpenRole(DEFAULT_ADMIN_ROLE)`, and post-B.6 the only `DEFAULT_ADMIN_ROLE` holder is the Timelock itself, which means a delay change must clear its own delay. Verified by inspection of OZ v5.1.0 `TimelockController.updateDelay` source.
+
+**Verification coverage.** Hardhat: `test/Governance.test.js → describe("Deployment") → it("Timelock min delay = 48h")` (deploy-time assertion only). No Foundry invariant covers post-deploy delay manipulation paths.
+
+**Assumptions / limits.** Relies on (a) OZ `TimelockController` v5.1.0 behaviour as audited upstream, and (b) the Phase B.6 final-lock step (deployer renounces `DEFAULT_ADMIN_ROLE` on the Timelock) having executed successfully. If B.6 was skipped, the deployer retains the ability to reduce `_minDelay` without delay. The B.6 ritual is documented in `scripts/transferAdminRoles.js` and §3.3.
+
+**Failure mode blocked.** Silent reduction of the protocol-wide review window via a non-Timelock-gated path.
+
+#### I-17 — Governor parameter changes are `onlyGovernance`
+
+**Statement.** `votingDelay`, `votingPeriod`, `proposalThreshold`, and `quorumNumerator` on `GuardiansGovernor` are mutable only via the `onlyGovernance` modifier — i.e., only via a Governor self-proposal that itself is queued and executed by the Timelock with the full 48 h delay.
+
+**Why it matters.** Anchors the DAO's self-amendment process. Without this property, a privileged actor could quietly tighten or loosen voting thresholds and silently corrupt subsequent governance outcomes.
+
+**Enforcement mechanism.** Inherited from OZ `GovernorSettings` and `GovernorVotesQuorumFraction` v5.1.0 — each setter (`setVotingDelay`, `setVotingPeriod`, `setProposalThreshold`, `updateQuorumNumerator`) carries the `onlyGovernance` modifier. `onlyGovernance` short-circuits to `require(msg.sender == _executor())`, where `_executor()` returns the Timelock address (`GuardiansGovernor.sol:L149` override). The Timelock executes only proposals that have passed the Governor vote and cleared its own 48 h delay.
+
+**Verification coverage.** **No end-to-end test exercises a self-amendment proposal** (flagged in §4.7.13). Hardhat: `test/Governance.test.js → describe("Deployment") → it("Governor settings match docs/12 spec")` covers the *initial* values. Foundry: `test-foundry/Governance.t.sol::test_governorSettings` similar. Neither exercises a proposal-to-amend flow end-to-end.
+
+**Assumptions / limits.** Relies on (a) OZ Governor v5.1.0 module composition as audited upstream, and (b) Phase B.3/B.4 having granted `PROPOSER_ROLE` and `CANCELLER_ROLE` to the Governor on the Timelock. The audit firm may reasonably request a smoke test that proposes `setVotingPeriod(...)`, queues, executes, and reads back the new value.
+
+**Failure mode blocked.** Backdoor parameter changes bypassing the DAO vote + Timelock delay.
 
 ---
 
