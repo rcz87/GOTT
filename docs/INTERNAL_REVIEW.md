@@ -2,7 +2,7 @@
 
 > **Status:** Pre-audit internal review. Intended for an external audit firm (SolidProof / Hacken tier) with no prior project context.
 > **Commit under review:** `8a80b35` (main).
-> **Document version:** Draft 0.8 — §4 + §5 + §6 + §7 + §9 + §10 + §11 complete; test counts reconciled (193 Hardhat + 54 Foundry); §8, §12, §13, §14, §15, §16, §1 pending.
+> **Document version:** Draft 0.9 — §4 + §5 + §6 + §7 + §8 + §9 + §10 + §11 complete; test counts reconciled (193 Hardhat + 54 Foundry); §12, §13, §14, §15, §16, §1 pending.
 
 ---
 
@@ -16,7 +16,7 @@
 
 This section tracks the internal drafting state. It is **not** part of the deliverable to the audit firm; it will be deleted in the Draft 1.0 cut.
 
-### Done in this revision (Draft 0.8)
+### Done in this revision (Draft 0.9)
 
 | Section | Status | Notes |
 |---|---|---|
@@ -32,6 +32,7 @@ This section tracks the internal drafting state. It is **not** part of the deliv
 | §5 Role Matrix | ✅ Complete | Consolidated table across 7 contracts + 4 post-table notes (contract-bound roles, hot keys, pause asymmetry, roleless Governor). |
 | §6 System Invariants (registry + body proof-sketches) | ✅ Complete | Registry I-01..I-17 plus §6.1-§6.6 body. Each invariant covered with 6-element format (Statement / Why it matters / Enforcement / Verification / Assumptions / Failure mode blocked). Coverage gaps honestly flagged for I-15 (no dedicated `invariant_*`), I-16 (OZ Timelock property, no Foundry invariant), I-17 (no end-to-end self-amendment test). Cross-refs: AD-03 (I-08 FoT limit), AD-06 (I-02 UTC bucket), AD-07 (I-02 / I-15 bound). |
 | §7 External Call Graph | ✅ Complete | 10 sub-sections (§7.1-§7.10). §7.1 reading guide (6 call classes), §7.2 ASCII high-level graphs (3: cleanup engine, landfill path, governance), §7.3 11-step `cleanupBatch` table, §7.4 `sendScamToLandfill` path, §7.5 mining-reward atomicity caveat (EVM revert propagation through DEX swaps in the same tx), §7.6 swap-fail fallback (try/catch scope explicit), §7.7 governance/Timelock pipeline, §7.8 admin/role transfer bootstrap calls, §7.9 20-row consolidated external-call inventory, §7.10 14-row revert/atomicity summary. Single "NO (caught)" row in §7.10 = router swap revert via try/catch; every other failure reverts the whole tx. |
+| §8 Storage Layout & Upgrade Story | ✅ Complete | 12 sub-sections (§8.1-§8.12). Non-upgradeable design statement (no proxy / no Diamond / no delegatecall). Per-contract logical storage walks with explicit constant / immutable / mutable / inherited / external-balance separation. §8.10 Immutable dependency matrix — only `_minDelay` is in-place-changeable (via self-proposal); every other immutable requires redeploy. §8.11 6 migration playbooks (replace GC / Mining / Registry / Vault / Governor+Timelock / Token-last-resort). §8.12 9-row storage risk summary — no currently-exploitable risk; all entries require a triggering event. "High (would-be)" used to distinguish forward-planning entries from live risks. |
 | §9 Trust Assumptions & Oracle Surface | ✅ Complete | §9.1 Trust Model Overview (four trust classes), §9.2 Hot-Key Surface Summary (5-row table), §9.3 oracleSigner deep-dive, §9.4 ORACLE_ROLE deep-dive, §9.5 PancakeRouter / WBNB boundary, §9.6 User-Supplied ERC-20 boundary, §9.7 Governance / Timelock boundary, §9.8 Bootstrap Trust Window, §9.9 Consolidated Trust Assumption Matrix. Operational vs on-chain controls explicitly labelled throughout. |
 | §10 Acknowledged Design Decisions (body) | ✅ Complete | AD-02..AD-11 drafted using the 9-element format (Title / Severity / Affected / Decision / Rationale / Risk / Mitigation / Residual / Cross-ref). AD-01 reserved for the highest-priority external-audit finding. Severities: AD-02..AD-04 Low, AD-05/AD-06/AD-09/AD-10/AD-11 Info, AD-07 Med, AD-08 Low–Med. |
 | §11 Gas & DoS Surface | ✅ Complete | 13 sub-sections (§11.1-§11.13). §11.2 7-row loop inventory (only the GC scam pre-check + swap loops have hard caps; `setStatusBatch` + `sendScamToLandfill` + `distributeInitial` are caller-discipline-bounded). §11.3 GC gas profile decomposition. §11.4 user-supplied ERC-20 grief modes. §11.10 PancakeRouter unavailability response. §11.11 BNB payout-fail user-local DoS. §11.12 14-row DoS classification matrix (single fund-at-risk row = AD-07 oracleSigner compromise). §11.13 7-item audit-request list (fork tests, FoT/rebasing coverage, optional `maxBatchSize`, frontend gas estimator, proposal hygiene, I-15 handler, I-17 E2E test). |
@@ -41,13 +42,12 @@ This section tracks the internal drafting state. It is **not** part of the deliv
 
 | Order | Section | Estimated complexity | Blocker / dependency |
 |---|---|---|---|
-| 1 | §8 Storage Layout & Upgrade Story | Low — protocol is non-upgradeable; section states this and walks each contract's storage layout for completeness | None. |
-| 2 | §13 Emergency Response | Medium — playbook for AD-07 (oracle key compromise), AD-02 (ORACLE_ROLE compromise), router incident, Timelock-stuck proposal, paused-vault recovery | §9 + §10 + §11 already drafted. |
-| 3 | §14 Test Coverage Summary | Low — write up the verified 193+54 numbers + coverage-gap rollup from §4.X.13 cells | Test counts already verified. |
-| 4 | §15 Out of Scope | Low — short list (off-chain signer infra, ORACLE_ROLE keeper service, frontend) | None. |
-| 5 | §16 Appendices (Glossary, EIP-712, Reward Formula derivation, Build & Reproducibility, Repo refs) | Medium | Reward-formula derivation pulls from §4.4.12 inline rationale + AD-05. |
-| 6 | §12 Deployment Reference | Low — short stub + link to `docs/DEPLOYMENT.md` | **Blocker: `docs/DEPLOYMENT.md` does not yet exist.** Create alongside §12 drafting. |
-| 7 | §1 Document Purpose | Low | Write **last**, after every other section is final. |
+| 1 | §13 Emergency Response | Medium — playbook for AD-07 (oracle key compromise), AD-02 (ORACLE_ROLE compromise), router incident, Timelock-stuck proposal, paused-vault recovery | §8 + §9 + §10 + §11 already drafted. |
+| 2 | §14 Test Coverage Summary | Low — write up the verified 193+54 numbers + coverage-gap rollup from §4.X.13 cells | Test counts already verified. |
+| 3 | §15 Out of Scope | Low — short list (off-chain signer infra, ORACLE_ROLE keeper service, frontend) | None. |
+| 4 | §16 Appendices (Glossary, EIP-712, Reward Formula derivation, Build & Reproducibility, Repo refs) | Medium | Reward-formula derivation pulls from §4.4.12 inline rationale + AD-05. |
+| 5 | §12 Deployment Reference | Low — short stub + link to `docs/DEPLOYMENT.md` | **Blocker: `docs/DEPLOYMENT.md` does not yet exist.** Create alongside §12 drafting. |
+| 6 | §1 Document Purpose | Low | Write **last**, after every other section is final. |
 
 ### Design acceptances catalog (§10 body now drafted — all severities user-ack'd)
 
@@ -2423,6 +2423,382 @@ Consolidated table of every external call in the protocol. Filter by **Class** t
 - "User asset outcome" describes the user-visible end state *after* the transaction. For revert rows, "not moved" / "unwound" mean the user's wallet state is identical to before the call.
 
 **Cross-references.** §4.5 (GarbageCollector contract walkthrough), §6 (invariants enforced by these revert paths), §9 (trust assumptions on what the revert behaviour bounds), §10 AD-07 / AD-08 / AD-09 / AD-10 (design acceptances on the catch / atomicity trade-offs).
+
+---
+
+## §8 Storage Layout & Upgrade Story
+
+### §8.1 Non-Upgradeable Design Statement
+
+The GOTT protocol is **non-upgradeable on-chain**. Concretely:
+
+- **No proxy** — none of the seven production contracts is deployed behind a transparent / UUPS / Beacon proxy.
+- **No Diamond / facet pattern** — no `EIP-2535` dispatcher; every external call resolves directly to a single contract address.
+- **No `delegatecall` anywhere in the protocol contract surface** (verified in §7.9 inventory, row patterns note). `ERC20Votes.delegate` is vote-weight assignment, not EVM `delegatecall`.
+- **Every contract is deployed as immutable bytecode.** Once deployed, the code at that address never changes.
+
+**"Upgrade" in this protocol means redeploy + governance migration.** There is no in-place implementation swap. A contract that is found defective post-launch must be replaced by deploying a new contract and migrating the relevant state and role grants — see §8.11 for the per-contract playbooks.
+
+**Storage layout still matters**, for four reasons distinct from proxy-safe upgrade compatibility:
+
+1. **Audit inspection.** Reviewers need to know which slots are constants (no slot allocated), immutables (bytecode-embedded), mutable storage (live state), and inherited (managed by an OZ parent module).
+2. **Migration planning.** When a contract is replaced, the protocol team must know which state needs to be exported / replayed / dropped on the successor.
+3. **Trust boundary clarity.** Immutables are part of the deployment-time trust act; mutables are part of the runtime governance surface. The split feeds §9 and §10.
+4. **Forward documentation.** Future readers (including future versions of the protocol team) should not silently assume any of the contracts is proxy-upgradeable. The audit-facing artifact should rule that out explicitly.
+
+**Cross-references.** §7.9 (no `delegatecall` row pattern), §9 (trust model), §10 AD-04 (vault role separation; relevant because the only role-migration playbook in v0.2.x scope is the Phase B.5 cutover).
+
+> **A note on slot-level layout.** This section describes the **logical** storage layout of each contract — which categories of state live where, what is mutable, what is immutable, and what is constant. It does **not** enumerate Solidity storage slot numbers because the compiler does not emit a stable storage-layout artifact under the current `hardhat.config.js` / `foundry.toml` settings (no `viaIR` slot-naming, no `--storage-layout` output captured). If the audit firm requires slot-by-slot enumeration, it can be generated by running `forge inspect <Contract> storage-layout` against the locked Solidity 0.8.24 toolchain.
+
+### §8.2 Storage Layout Summary Table
+
+| Contract | Upgradeable? | Proxy? | Constructor-set immutables | Mutable storage owned by contract | Inherited storage modules (OZ v5.1.0) | Migration difficulty | Notes |
+|---|---|---|---|---|---|---|---|
+| `GuardiansToken` | ❌ No | None | — (no `immutable` declarations) | `mintedPerDay` mapping, `initialized` flag | `ERC20`, `ERC20Burnable` (no new storage), `Pausable`, `ERC20Permit` (via `EIP712` + `Nonces`), `ERC20Votes` (Checkpoints), `AccessControl` | **Highest** — live balances, allowances, vote checkpoints, delegation, permit nonces, total supply | TGE allocation + governance vote source. See §8.3. |
+| `ScamRegistry` | ❌ No | None | — | `tokenInfo` mapping (`status`, `lastUpdated`, `reportedBy`, `reportCount` per token) | `AccessControl`, `Pausable` | Medium — classifications must be replayed onto a successor | See §8.4 |
+| `LandfillVault` | ❌ No | None | — | none beyond inherited (vault has no per-token bookkeeping; balances live in the ERC-20 contracts) | `AccessControl`, `Pausable`, `ReentrancyGuard` | Low for governance / Medium for token migration | See §8.5 |
+| `CleanupMining` | ❌ No | None | `gott`, `LAUNCH_TIMESTAMP` | `baseRate`, `tierBronze`, `tierSilver`; per-user maps (`hasCleanedBefore`, `totalCleanupValue`, `totalRewardsEarned`, `lastCleanupTimestamp`, `cleanupCountPerEpoch`); globals (`totalCleanupsExecuted`, `totalValueCleaned`) | `AccessControl`, `Pausable`, `ReentrancyGuard` | Medium — immutable `LAUNCH_TIMESTAMP` cannot be preserved; epoch clock resets on redeploy | See §8.6 |
+| `GarbageCollector` | ❌ No | None | `router`, `WBNB`, `scamRegistry` | `miningContract`, `landfillVault`, `oracleSigner`; `maxTokensPerCleanup`, `swapDeadlineBuffer`, `minCleanupValueUSD`; `nonces` mapping | `AccessControl`, `Pausable`, `ReentrancyGuard`, `EIP712` (`_HASHED_NAME`, `_HASHED_VERSION` — bytecode-embedded via EIP712 parent) | Medium — three immutables fix the swap-path identity; replacement is a deploy + role rewire | See §8.7 |
+| `GuardiansTimelockController` | ❌ No (OZ v5.1.0 canonical) | None | `__self` (transitive, OZ-internal — used to prevent direct `execute` outside intended path) | `_minDelay`, `_timestamps` mapping | `AccessControl`, `IERC721Receiver`, `IERC1155Receiver` (callback receivers, no state) | Medium — admin root post-B.5; replacement requires careful role transfer to a new Timelock | See §8.8 |
+| `GuardiansGovernor` | ❌ No | None | — (token + timelock stored privately by parent modules, not as child-level immutables) | none owned by the child contract | `Governor` (proposal state, votes), `GovernorSettings` (delay, period, threshold), `GovernorCountingSimple` (vote tallies per proposal), `GovernorVotes` (`_token`), `GovernorVotesQuorumFraction` (`_quorumNumeratorHistory`), `GovernorTimelockControl` (`_timelock`, `_timelockIds`) | Medium — replacement requires re-granting `PROPOSER_ROLE` / `CANCELLER_ROLE` to new Governor on Timelock | See §8.9 |
+
+### §8.3 GuardiansToken Storage Layout
+
+**Constants (no storage slot).** `MAX_SUPPLY = 1_000_000_000 * 10^18` (`GuardiansToken.sol:L45`); `MAX_MINT_PER_DAY = 1_400_000 * 10^18` (`L46`); the three role-hash constants `MINTER_ROLE`, `PAUSER_ROLE`, `CLEANUP_MINER_ROLE` (`L38-L40`). All are `bytes32` / `uint256` `constant`, embedded in bytecode.
+
+**Immutables.** **None.** Unlike CleanupMining (which seals its `gott` reference) and GarbageCollector (which seals `router` / `WBNB` / `scamRegistry`), the token contract has no external dependencies to seal — it stands alone at the bottom of the protocol's dependency graph.
+
+**Own mutable storage.**
+- `mapping(uint256 => uint256) public mintedPerDay` (`L52`) — UTC-day-bucket accumulator for I-02 enforcement.
+- `bool public initialized` (`L55`) — one-shot TGE flag (I-03).
+
+**Inherited storage (OZ v5.1.0 modules — managed by the parent contracts, not directly by GuardiansToken):**
+
+| Module | Storage |
+|---|---|
+| `ERC20` | `_balances`, `_allowances`, `_totalSupply`, `_name`, `_symbol` |
+| `ERC20Burnable` | none (only methods) |
+| `Pausable` | `_paused` |
+| `ERC20Permit` / `EIP712` / `Nonces` | `_HASHED_NAME` (immutable), `_HASHED_VERSION` (immutable), `_cachedDomainSeparator`, `_cachedChainId`, `_cachedThis`, `_nonces` |
+| `ERC20Votes` | `_delegatee` (per-account delegation), `_delegateCheckpoints` (per-delegatee Checkpoints), `_totalCheckpoints` (global supply Checkpoints) |
+| `AccessControl` | `_roles` (mapping from role → struct of members + admin role) |
+
+The `Checkpoints.Trace208` storage is non-trivial for migration: it stores a chronologically-ordered series of `(block_number, voting_power)` pairs per delegatee plus per global supply. A migration to a new token contract must decide whether to preserve historical voting weight (read the original token's `getPastVotes(...)` and replay) or to reset the voting timeline from zero.
+
+**Migration story.** This is the **hardest contract to migrate** in the protocol. Live state includes:
+- ERC-20 balances and allowances for every token holder (could be hundreds of thousands of accounts at maturity).
+- `ERC20Permit` per-account nonces (consumed by gasless approvals).
+- `ERC20Votes` per-delegatee checkpoint history + global supply checkpoint history.
+- TGE distribution traces in `mintedPerDay` (effectively unchecked, append-only via `mintReward`).
+
+If a critical bug is found post-mainnet, the safest replacement route is **deploy a new token + snapshot-and-claim migration**: snapshot balances at a fixed block, deploy a new GOTT contract with an `initialClaim(address, uint256, proof)` function that users call to receive their balance on the new token. Voting checkpoint history would be re-derived from the snapshot point forward. **In-place storage upgrade is not an option** — there is no proxy.
+
+**Cross-references.** §6 I-01, I-02, I-03; §10 AD-06; §4.1.
+
+### §8.4 ScamRegistry Storage Layout
+
+**Constants (no storage slot).** `ORACLE_ROLE` (`ScamRegistry.sol:L18`), `PAUSER_ROLE` (`L19`). `TokenStatus` enum (`L24-32`) is type-only, not a storage slot.
+
+**Immutables.** **None.**
+
+**Own mutable storage.**
+- `mapping(address => TokenInfo) public tokenInfo` — single slot per token, with `TokenInfo` struct fields packed by Solidity per layout rules: `TokenStatus status` (1 byte), `uint64 lastUpdated`, `uint64 reportCount`, `address reportedBy`. (See §4.2.7 for the struct layout used by the contract.)
+
+**Inherited storage:**
+
+| Module | Storage |
+|---|---|
+| `AccessControl` | `_roles` |
+| `Pausable` | `_paused` |
+
+**Migration story.** Conceptually simple but operationally non-trivial:
+1. Deploy new `ScamRegistry` (same code or an updated successor).
+2. Export current `tokenInfo` for every classified token (read off-chain via event replay of `StatusUpdated` since deploy block, or via direct state read of all known token addresses).
+3. On the new registry, replay the latest `setStatus` per token using the new `ORACLE_ROLE` keeper. `reportCount` and historical `lastUpdated` for each token **cannot be preserved** — the new registry starts with `reportCount = 1` per migrated token. Off-chain indexers should adjust their schemas to span "registry epochs" if continuity matters.
+4. **The `GarbageCollector.scamRegistry` reference is `immutable`** (§4.5.10) — the existing GarbageCollector cannot be re-pointed at the new registry. A registry migration therefore implies **a parallel GarbageCollector migration** (§8.7). The two are coupled by deployment-time immutability.
+
+**Cross-references.** §6 I-04 (enum range), I-05 (reportCount monotonic), I-06 (lastUpdated monotonic), I-07 (count matches writes); §9.4 (ORACLE_ROLE trust); §10 AD-02.
+
+### §8.5 LandfillVault Storage Layout
+
+**Constants (no storage slot).** `DAO_ROLE` (`LandfillVault.sol:L24`), `EMERGENCY_ROLE` (`L25`), `PAUSER_ROLE` (`L26`).
+
+**Immutables.** **None.**
+
+**Own mutable storage.** **None beyond inherited modules.** The vault holds no per-token bookkeeping. **Token balances are stored in the respective ERC-20 contracts** (`balanceOf(vault, token)`), not in the vault's own storage. This is the load-bearing design choice behind I-08 / I-09 / I-10 — the vault has nothing to corrupt in its own slots; the entire balance state is delegated to the external ERC-20 contract.
+
+**Inherited storage:**
+
+| Module | Storage |
+|---|---|
+| `AccessControl` | `_roles` |
+| `Pausable` | `_paused` |
+| `ReentrancyGuard` | `_status` (single-slot lock flag) |
+
+**Migration story.** The lightest migration in the protocol — there is **no contract-local state to preserve**.
+
+1. Deploy new `LandfillVault` with the new role allocation (e.g., separate multisig for `EMERGENCY_ROLE` per AD-04 future direction).
+2. For each token currently held in the old vault: governance proposes `oldVault.transferToken(token, newVault, balance)` to move the balance.
+3. Update `GarbageCollector.landfillVault` via `setLandfillVault(newVault)` (this address is mutable, §4.5.6).
+4. Revoke roles from the old vault (it becomes a dead address but cannot be `selfdestruct`-ed; the protocol team accepts the residual contract on-chain).
+
+**Known limitation: stuck tokens.** Any token in the old vault whose `transfer` reverts (paused token, blacklisted vault address, etc.) is permanently stuck. `emergencyWithdraw` faces the same constraint — it calls `safeTransfer`, which is at the mercy of the token's own logic. **The protocol has no on-chain escape hatch** if a token decides to lock the vault's balance. This is acceptable because (a) the vault is by design a custody-only contract for tokens the protocol does not assume are well-behaved, and (b) the alternative — bytecode-level token unlocking — is not feasible.
+
+**Cross-references.** §6 I-08 / I-09 / I-10; §10 AD-03 (FoT drift) / AD-04 (role separation); §4.3.
+
+### §8.6 CleanupMining Storage Layout
+
+**Constants (no storage slot).** `COLLECTOR_ROLE`, `ADMIN_ROLE`, `PAUSER_ROLE` (`CleanupMining.sol:L39-L41`); `EPOCH_DURATION = 180 days` (`L50`); `MAX_BASE_RATE = 1000 ether` (`L53`).
+
+**Immutables (bytecode-embedded via Solidity `immutable`, set in constructor):**
+
+| Name | Source | Notes |
+|---|---|---|
+| `gott` | `CleanupMining.sol:L46` | `IGuardiansToken` reference to the token contract. **Cannot be changed in-place.** |
+| `LAUNCH_TIMESTAMP` | `L49` | `block.timestamp` at deployment. **Anchors the epoch clock for the entire contract lifetime.** A new CleanupMining redeploy starts a fresh epoch-zero. |
+
+**Own mutable storage.**
+
+*Tuning parameters (admin-settable):*
+- `uint256 baseRate = 100 ether` (`L58`).
+- `uint256 tierBronze = 100e18` (`L59`).
+- `uint256 tierSilver = 1000e18` (`L60`).
+
+*Per-user accounting (mappings):*
+- `mapping(address => bool) public hasCleanedBefore` (`L65`).
+- `mapping(address => uint256) public totalCleanupValue` (`L66`).
+- `mapping(address => uint256) public totalRewardsEarned` (`L67`).
+- `mapping(address => uint256) public lastCleanupTimestamp` (`L68`).
+- `mapping(address => mapping(uint256 => uint256)) public cleanupCountPerEpoch` (`L70`) — per-user-per-epoch counter.
+
+*Global counters:*
+- `uint256 public totalCleanupsExecuted` (`L75`).
+- `uint256 public totalValueCleaned` (`L76`).
+
+**Inherited storage:** `AccessControl._roles`, `Pausable._paused`, `ReentrancyGuard._status`.
+
+**Migration story.** The structural challenge is `LAUNCH_TIMESTAMP`. Because it is immutable, a new deployment captures a fresh `block.timestamp` — the epoch clock resets to zero. This has economic consequences: a redeploy mid-Epoch-2 would restart users at Epoch 0 with the full 1.0× multiplier, breaking the halving schedule (§4.4 reward table).
+
+**A safe redeploy therefore requires governance acceptance** that the new contract starts a fresh emission curve. The audit firm should verify the runbook anticipates this: if the bug requiring redeploy is found within Epoch 0, the impact is small; deeper into the schedule, a redeploy is increasingly disruptive to tokenomics.
+
+**Migration steps:**
+1. Deploy new `CleanupMining` (same code or successor) — `LAUNCH_TIMESTAMP` set to deployment block.
+2. `GuardiansToken.grantRole(CLEANUP_MINER_ROLE, newMining)` via Governor proposal.
+3. `GarbageCollector.setMiningContract(newMining)` via Governor proposal (mutable wiring, §4.5.6).
+4. `newMining.grantRole(COLLECTOR_ROLE, garbageCollector)` (since `COLLECTOR_ROLE` was held by GC on the *old* mining contract, the grant must be replayed on the new one).
+5. `GuardiansToken.revokeRole(CLEANUP_MINER_ROLE, oldMining)` to stop the old contract from issuing rewards.
+6. Per-user accounting (totalRewardsEarned, cleanupCountPerEpoch, etc.) is **not migrated** — these are bookkeeping for the off-chain indexer / dashboard. Frontend should display both old-contract and new-contract totals if continuity matters to users.
+
+**Cross-references.** §6 I-11 / I-12 / I-13 / I-14; §10 AD-05 (divide-before-multiply); §4.4.
+
+### §8.7 GarbageCollector Storage Layout
+
+**Constants (no storage slot).** `ADMIN_ROLE`, `PAUSER_ROLE` (`GarbageCollector.sol:L53-L54`); `MAX_TOKENS_HARD_CAP = 50` (`L78`); `CLEANUP_AUTH_TYPEHASH` (`L84`).
+
+**Immutables (bytecode-embedded, constructor-set):**
+
+| Name | Source | Notes |
+|---|---|---|
+| `router` | `L59` | `IPancakeRouter` reference — sealed to a specific deployed router. |
+| `WBNB` | `L62` | Canonical WBNB on BSC. |
+| `scamRegistry` | `L63` | `IScamRegistry` reference — sealed to a specific deployed registry. |
+| `_HASHED_NAME`, `_HASHED_VERSION` (from EIP712 parent) | parent constructor at `L139` | EIP-712 domain separator components, set from `EIP712("GarbageCollector", "1")`. Changing either string requires a new deployment + signer-coordinated rotation. |
+
+**Own mutable storage (rotatable wiring + tuning + nonces).**
+
+*Protocol-internal wiring:*
+- `address public miningContract` (`L68`) — `setMiningContract` rotatable.
+- `address public landfillVault` (`L69`) — `setLandfillVault` rotatable.
+- `address public oracleSigner` (`L70`) — `setOracleSigner` rotatable (AD-07 rotation primitive).
+
+*Tuning parameters:*
+- `uint256 public maxTokensPerCleanup = 20` (`L75`).
+- `uint256 public swapDeadlineBuffer = 10 minutes` (`L76`).
+- `uint256 public minCleanupValueUSD = 1e18` (`L77`).
+
+*EIP-712 nonce state:*
+- `mapping(address => uint256) public nonces` (`L88`) — per-user monotonic nonce (I-15).
+
+**Inherited storage:** `AccessControl._roles`, `Pausable._paused`, `ReentrancyGuard._status`, plus `EIP712` cache slots (`_cachedDomainSeparator`, `_cachedChainId`, `_cachedThis`).
+
+**Migration story.** The three swap-path immutables (`router`, `WBNB`, `scamRegistry`) fix the GC's deployment-time identity. A redeploy is required for any of: replacing the router (e.g., Pancake v3 migration), replacing WBNB (e.g., canonical re-deployment by BSC), or replacing the ScamRegistry (e.g., §8.4 migration).
+
+**Steps:**
+1. Deploy new `GarbageCollector` with updated immutables. `EIP712("GarbageCollector", "1")` — note that the domain string can stay the same; what changes is the **`verifyingContract` address inside the EIP-712 domain separator**, computed from the new contract's `address(this)`. **This automatically invalidates every pre-signed `CleanupAuthorization` for the old GC** without any manual step, because the domain hash differs.
+2. `CleanupMining.grantRole(COLLECTOR_ROLE, newGC)` via Governor proposal.
+3. `CleanupMining.revokeRole(COLLECTOR_ROLE, oldGC)`.
+4. **New GC starts with `nonces[user] == 0` for every user.** Old `nonces` are not migrated and do not need to be: because the domain separator differs between old and new GC, old signatures cannot replay on the new contract. The frontend must fetch the nonce from the new (active) collector at sign time.
+5. Pause `oldGC` to block any in-flight calls (or let it stay live during a brief overlap window — in-flight calls succeed on the old contract until pause, but no new rewards flow because `COLLECTOR_ROLE` is revoked).
+6. Frontend / off-chain signer service updated to target the new `verifyingContract` in EIP-712 metadata.
+
+**Nonce continuity trade-off.** Preserving nonces across a GC redeploy would have required adding a `setInitialNonces(...)` admin function and an off-chain export/import step, increasing both the migration surface and the post-migration trust surface (a malicious admin could set arbitrary nonces). The chosen design — fresh-nonce-on-deploy + domain-separation-bound replay protection — is operationally simpler and security-equivalent.
+
+**Cross-references.** §6 I-15 (nonce monotonic); §9.3 (oracleSigner) / §9.5 (router / WBNB); §10 AD-07 / AD-08 / AD-09; §4.5.
+
+### §8.8 GuardiansTimelockController Storage Layout
+
+**Constants (no storage slot).** Role hashes inherited from OZ `TimelockController`: `PROPOSER_ROLE`, `EXECUTOR_ROLE`, `CANCELLER_ROLE`, `DEFAULT_ADMIN_ROLE` (the last via `AccessControl`).
+
+**Immutables.** None at the GuardiansTimelockController child level. OZ `TimelockController` itself uses `address private immutable __self` (OZ-internal, used to bind `onlyGovernance` self-calls); this is a transitive immutable not exposed to the child.
+
+**Own mutable storage.** None at the child level — the contract body is empty (§4.6.3 constructor pass-through). All state is in the OZ parent.
+
+**Inherited storage (OZ `TimelockController` v5.1.0):**
+- `uint256 private _minDelay` — the 48 h delay.
+- `mapping(bytes32 => uint256) private _timestamps` — per-operation ready-time.
+- `AccessControl._roles` — `DEFAULT_ADMIN_ROLE`, `PROPOSER_ROLE`, `EXECUTOR_ROLE`, `CANCELLER_ROLE`.
+
+**Migration story.** The Timelock is the **admin root post-B.5**, which makes replacement non-trivial — every role granted to the Timelock across the five protocol contracts must be transferred to the successor.
+
+**Steps:**
+1. Deploy new `GuardiansTimelockController` with the desired `_minDelay` and the existing Governor pre-granted `PROPOSER_ROLE` + `CANCELLER_ROLE` (analogous to Phase B.1–B.4).
+2. Propose (via the *existing* Timelock) a Governor proposal whose payload calls `grantRole(<role>, newTimelock)` on every protocol contract and then `revokeRole(<role>, oldTimelock)` on each — batched. This is a self-supersession proposal: the old Timelock is signing off on its own replacement, executed under its own 48 h delay.
+3. Old Timelock self-renounces `DEFAULT_ADMIN_ROLE` on the new Timelock (if it was granted at step 1) — final lock parallel to Phase B.6.
+4. Frontend / off-chain governance UI updated to target the new Timelock.
+
+**Risk during migration window.** Between step 2 (proposal queued) and step 3 (old Timelock dies), both Timelocks transiently hold admin authority. A maliciously-passed proposal during this window could exploit the duplication. **The 48 h delay still applies to such a proposal**, providing the standard review window — but the operational risk is non-trivial enough that this migration should not be undertaken without strong cause.
+
+**Cross-references.** §6 I-16 (min delay); §9.7 (governance trust); §10 AD-10 (open executor); §4.6.
+
+### §8.9 GuardiansGovernor Storage Layout
+
+**Constants (no storage slot).** None declared at the child level (governance parameters are stored in the inherited modules, not as constants).
+
+**Immutables.** None at the child level. The `_token` and `_timelock` references are stored privately by their respective parent modules (`GovernorVotes._token`, `GovernorTimelockControl._timelock`), both set in the parent constructors at deploy time. They have public getters (`token()`, `timelock()`) but no rotators — replacement requires a fresh Governor deployment.
+
+**Own mutable storage.** None at the child level — the contract body is composed entirely of `super.X()` overrides (§4.7.6).
+
+**Inherited storage (OZ v5.1.0 modules):**
+
+| Module | Storage |
+|---|---|
+| `Governor` | `_name` (immutable from EIP-712), `_proposals` (mapping from proposalId to ProposalCore), EIP-712 cache |
+| `GovernorSettings` | `_votingDelay`, `_votingPeriod`, `_proposalThreshold` |
+| `GovernorCountingSimple` | `_proposalVotes` (per-proposal tally) |
+| `GovernorVotes` | `_token` (private) |
+| `GovernorVotesQuorumFraction` | `_quorumNumeratorHistory` (Checkpoints) |
+| `GovernorTimelockControl` | `_timelock` (private), `_timelockIds` (mapping proposalId → Timelock op hash) |
+
+**Migration story.**
+
+1. Deploy new `GuardiansGovernor` with the desired settings, pointing at the same token + Timelock (or a new Timelock per §8.8).
+2. Via the *existing* Governor + Timelock pipeline, queue a proposal that:
+   - `Timelock.grantRole(PROPOSER_ROLE, newGovernor)`
+   - `Timelock.grantRole(CANCELLER_ROLE, newGovernor)`
+   - `Timelock.revokeRole(PROPOSER_ROLE, oldGovernor)`
+   - `Timelock.revokeRole(CANCELLER_ROLE, oldGovernor)`
+3. Execute the proposal after the 48 h delay.
+4. **Token voting checkpoints remain in GuardiansToken** (§8.3), not in the Governor. The new Governor reads voting weight from the same token — no checkpoint migration required.
+5. In-flight proposals on the old Governor remain executable on the old Governor (it still has `PROPOSER_ROLE` until step 3 executes). Operational discipline: do not queue new proposals on the old Governor during the migration window.
+
+**Cross-references.** §6 I-17 (onlyGovernance for self-amendment); §10 AD-11 (BSC block-time variance); §4.7.
+
+### §8.10 Immutable Dependency Matrix
+
+Every `immutable` (Solidity-level) and structurally-fixed reference across the protocol. "Can change in-place?" is **always No** for Solidity `immutable` declarations — the column is listed for completeness; the meaningful column is **Replacement path**.
+
+| Contract | Immutable / fixed dependency | Can change in-place? | Replacement path | Operational impact |
+|---|---|---|---|---|
+| `CleanupMining` | `gott` (`L46`) | No | Deploy new CleanupMining; re-grant `CLEANUP_MINER_ROLE` on token; re-grant `COLLECTOR_ROLE` on new mining | Epoch clock resets (§8.6); per-user totals not migrated |
+| `CleanupMining` | `LAUNCH_TIMESTAMP` (`L49`) | No | Set automatically by `block.timestamp` at deploy | Epoch curve restart at zero — emission schedule disrupted if redeployed mid-protocol |
+| `GarbageCollector` | `router` (`L59`) | No | Deploy new GarbageCollector with new router; re-grant `COLLECTOR_ROLE` on CleanupMining | Frontend update; nonce reset (intentional, §8.7) |
+| `GarbageCollector` | `WBNB` (`L62`) | No | Same as router (deploy new GC) | Practically a non-event — canonical WBNB on BSC is stable |
+| `GarbageCollector` | `scamRegistry` (`L63`) | No | New GC deploy required; the §8.4 ScamRegistry migration is therefore coupled to a §8.7 GarbageCollector migration | Two-contract redeployment in lockstep |
+| `GarbageCollector` | `EIP712._HASHED_NAME`, `_HASHED_VERSION` (set at parent constructor `L139`) | No | New GC deploy with same strings keeps EIP-712 metadata stable; domain `verifyingContract` differs anyway | Backend signer must point at new GC address |
+| `GuardiansGovernor` | `_token` (private, in `GovernorVotes`) | No | Deploy new Governor pointing at same token + Timelock (§8.9) | Re-grant `PROPOSER_ROLE` / `CANCELLER_ROLE` on Timelock |
+| `GuardiansGovernor` | `_timelock` (private, in `GovernorTimelockControl`) | No | New Governor required for new Timelock target | Coupled with §8.8 migration |
+| `GuardiansTimelockController` | `_minDelay` (mutable but self-governed) | **Yes, via self-proposal** | `updateDelay(newDelay)` queued + executed under existing delay (I-16) | The proposal must clear the *current* minimum delay before the change takes effect |
+
+**Reading the matrix.**
+- The only "Yes, via self-proposal" entry is the Timelock's own `_minDelay`. Every other immutable / fixed reference requires a deploy + governance migration.
+- **Token, vault, and mining are the structurally-flexible references** in the cleanup engine — they are mutable on the GarbageCollector and can be re-pointed without a GC redeploy. The router, WBNB, and scam-registry references are **structurally-sealed**.
+
+### §8.11 Redeploy / Migration Playbooks
+
+Each playbook lists the on-chain steps assuming a healthy governance pipeline (Governor + Timelock + 48 h delay). All actions are gated by Timelock proposals unless noted.
+
+**1. Replace GarbageCollector** (e.g., router upgrade or scam-registry replacement)
+
+1. Deploy new `GarbageCollector` with updated `router` / `WBNB` / `scamRegistry` constructor args.
+2. Governor proposal batch:
+   - `CleanupMining.grantRole(COLLECTOR_ROLE, newGC)`
+   - `CleanupMining.revokeRole(COLLECTOR_ROLE, oldGC)`
+   - `oldGC.pause()` (optional — prevents in-flight calls landing after revocation)
+3. Update frontend EIP-712 `verifyingContract` to new GC address.
+4. Update off-chain signer service to issue authorizations against the new domain separator.
+5. Verify on BscScan + publish migration announcement.
+
+**2. Replace CleanupMining** (e.g., reward formula bug — last-resort path)
+
+1. Deploy new `CleanupMining` with same `gott` address. `LAUNCH_TIMESTAMP` resets — accept the epoch restart.
+2. Governor proposal batch:
+   - `GuardiansToken.grantRole(CLEANUP_MINER_ROLE, newMining)`
+   - `GarbageCollector.setMiningContract(newMining)` (mutable wiring)
+   - `newMining.grantRole(COLLECTOR_ROLE, garbageCollector)`
+   - `GuardiansToken.revokeRole(CLEANUP_MINER_ROLE, oldMining)`
+3. Per-user totals reset to zero on the new contract — frontend should display historical totals separately.
+4. Verify + announce.
+
+**3. Replace ScamRegistry**
+
+1. Deploy new `ScamRegistry`.
+2. Off-chain: export all classified tokens from old registry (event replay or state read).
+3. New `ORACLE_ROLE` keeper batch-replays classifications via `setStatusBatch` on the new registry (chunked per §11.5).
+4. **Coupled GC migration required** (§8.7 / playbook 1) because GC's `scamRegistry` is immutable.
+5. Governor revokes the old registry's keeper role (optional — old registry becomes unused but cannot be `selfdestruct`-ed).
+
+**4. Replace LandfillVault**
+
+1. Deploy new `LandfillVault` with desired role configuration (e.g., separate multisig for `EMERGENCY_ROLE` per AD-04).
+2. Governor proposal batch — for each token in the old vault:
+   - `oldVault.transferToken(token, newVault, balance)` (or `oldVault.burnToken(token, balance)` if the token is to be retired)
+3. `GarbageCollector.setLandfillVault(newVault)` (mutable wiring).
+4. Governor revokes roles on the old vault. Old vault becomes a dead address.
+5. **Stuck-token caveat:** any token whose `transfer` is blocked cannot be moved; the protocol team accepts that residual balance in the old vault may be permanent (§8.5 / §11.6).
+
+**5. Replace Governor / Timelock**
+
+1. Deploy new `GuardiansTimelockController` and new `GuardiansGovernor` (if both are being replaced) — analogous to Phase B.1–B.2.
+2. Via the **existing** Governor + Timelock pipeline, queue a self-supersession proposal — payload grants the appropriate roles to the new Timelock + Governor on every protocol contract and revokes from the old ones.
+3. Execute after 48 h.
+4. Old Timelock + Governor remain on-chain but lose all authority. Old Timelock self-renounces `DEFAULT_ADMIN_ROLE` on the new Timelock if step 2 granted it.
+5. **Operational risk window:** between proposal queue and execution, both Timelocks transiently hold admin authority (§8.8). Frontend pause on new proposals during this window is recommended.
+
+**6. Replace GuardiansToken (last-resort)**
+
+The hardest playbook. **Recommended only for a Critical-severity finding on the token itself.**
+
+1. Decide on a snapshot block.
+2. Deploy new GOTT token contract (likely with the bug fix). New token starts with `totalSupply = 0` and `initialized = false`.
+3. Provide a `claim(amount, merkleProof)`-style migration function on the new token (not present in v0.2.x — would be a v0.3+ addition).
+4. Off-chain: compute merkle tree of balances at snapshot block.
+5. Users claim into the new token; old token continues to function but the protocol's cleanup engine is paused or pointed to the new token via `CleanupMining` redeploy (because `gott` is immutable on the current mining contract).
+6. **ERC20Votes checkpoint history is lost** (or has to be replayed via off-chain delegation re-delegation). Frontend explains.
+7. Liquidity pools, exchange listings, indexers — all must follow the new token.
+
+**This playbook touches every protocol contract** and is the reason GuardiansToken is the highest-migration-difficulty entry in §8.2.
+
+### §8.12 Storage Risk Summary
+
+Audit-facing summary of where storage layout intersects with protocol risk.
+
+| Risk | Affected contract | Severity | Why bounded | Migration route | Reference |
+|---|---|---|---|---|---|
+| Token storage cannot be upgraded in-place | GuardiansToken | High (would-be) | No proxy; deploy + snapshot/claim migration only | §8.11 playbook 6 | §8.3 |
+| GarbageCollector immutable `router` / `WBNB` / `scamRegistry` | GarbageCollector | Medium | Mutable wiring (`miningContract`, `landfillVault`, `oracleSigner`) provides operational flexibility; immutables are sealed *by design* to bound trust | §8.11 playbook 1 | §8.7 |
+| GarbageCollector fresh `nonces` mapping on redeploy | GarbageCollector | Info | EIP-712 domain separator naturally invalidates pre-signed authorizations on the old contract; no replay risk | §8.7 nonce trade-off | §8.7, I-15 |
+| CleanupMining `LAUNCH_TIMESTAMP` immutable | CleanupMining | Medium | Epoch clock resets on redeploy — disruptive mid-curve but acceptable for emergency replacements | §8.11 playbook 2 | §8.6, I-14 |
+| LandfillVault permanently stuck non-transferable tokens | LandfillVault | Low | Token-local; no protocol-level escape hatch but no protocol-level fund-at-risk either | §8.5 known limitation | §8.5, §11.6 |
+| ScamRegistry classification replay burden on migration | ScamRegistry | Low | Operational — `setStatusBatch` exists; coupled GC redeploy required | §8.11 playbook 3 | §8.4 |
+| Governor / Timelock role migration complexity | Governance | Medium | Self-supersession pattern; 48 h delay still applies to the migration proposal | §8.11 playbook 5 | §8.8, §8.9 |
+| `ERC20Votes` checkpoint history not portable across token redeploy | GuardiansToken | High (would-be) | No proxy migration; checkpoint Trace208 storage is module-internal | §8.11 playbook 6 step 6 | §8.3 |
+| Bootstrap-window admin role concentration (Phase A through B.6) | All contracts | Medium (operational) | Time-bounded; deployer key custody + idempotent `transferAdminRoles.js` | §3.3 + §9.8 + §7.8 | §9.8 |
+
+**Reading the table.**
+- **"High (would-be)"** for token storage means a Critical token-layer bug *would* trigger the playbook-6 migration — it is not a live risk but a forward-planning entry for the protocol team's runbook.
+- The Medium entries are *operational complexity* during migration, not on-chain security holes.
+- The Low entries describe constraints the protocol design has accepted and documented (AD-03, AD-04 family).
+- **No storage risk is currently exploitable on-chain.** Every entry assumes a triggering event (a discovered bug, a router deprecation, a Pancake upgrade) that has not occurred.
 
 ---
 
