@@ -2,13 +2,76 @@
 
 > **Status:** Pre-audit internal review. Intended for an external audit firm (SolidProof / Hacken tier) with no prior project context.
 > **Commit under review:** `8a80b35` (main).
-> **Document version:** Draft 0.1 — sections §1, §12 (full runbook), and §14 pending finalization.
+> **Document version:** Draft 0.2 — §4 Contract Inventory complete; §5, §7–§16, §1, and appendices pending.
 
 ---
 
 ## §1 Document Purpose
 
 *To be written last.*
+
+---
+
+## Draft Progress (working note — remove before delivery to audit firm)
+
+This section tracks the internal drafting state. It is **not** part of the deliverable to the audit firm; it will be deleted in the Draft 1.0 cut.
+
+### Done in this revision (Draft 0.2)
+
+| Section | Status | Notes |
+|---|---|---|
+| §2 Executive Summary | ✅ Complete | Scope, stats, toolchain, deployment target. |
+| §3 Protocol Architecture | ✅ Complete | Data flow, ASCII dependency diagram, Phase A/B/C lifecycle, off-chain deps. |
+| §4.1 GuardiansToken | ✅ Complete | 13-element template. |
+| §4.2 ScamRegistry | ✅ Complete | 13-element template. |
+| §4.3 LandfillVault | ✅ Complete | 13-element template. FoT-token coverage gap flagged. |
+| §4.4 CleanupMining | ✅ Complete | 13-element template + reward-math sanity check + 4 Slither suppressions. |
+| §4.5 GarbageCollector | ✅ Complete | 13-element template. **High-risk contract.** CEI deep-dive, internal-helper audit notes, 9 logical Slither suppressions. AD-07/08/09 forward-ref'd to §10. |
+| §4.6 GuardiansTimelockController | ✅ Complete | Vanilla OZ wrapper (24 LoC). AD-10 (open executor) forward-ref'd to §10. |
+| §4.7 GuardiansGovernor | ✅ Complete | OZ module composition (151 LoC, 9 required overrides). AD-11 (BSC block-time variance) forward-ref'd to §10. |
+| §6 Invariant ID registry | ✅ Stub complete | I-01..I-17. Body proof-sketches pending. |
+
+### Pending sections (planned order)
+
+| Order | Section | Estimated complexity | Blocker / dependency |
+|---|---|---|---|
+| 1 | §5 Role Matrix | Low (~50 lines) — consolidate from §4.X.4 tables | None. Fastest next step. |
+| 2 | §10 Acknowledged Design Decisions (body) | Medium — write AD-01..AD-11 entries with severity + acceptance rationale | User ack on proposed severities for AD-07..AD-11. |
+| 3 | §6 body proof-sketches | Medium — one paragraph per invariant I-01..I-17 | Registry stub already done. |
+| 4 | §9 Trust Assumptions & Oracle Surface | Medium — formalises the two "hot key" surfaces (`oracleSigner`, `ORACLE_ROLE`) and PancakeRouter trust boundary | Pulls from §4.5.4 and §3.4. |
+| 5 | §7 External Call Graph | Low–Medium — diagrams already partially in §3.2; this section is the formal version with arrow direction + role gates | None. |
+| 6 | §11 Gas & DoS Surface | Medium — covers `MAX_TOKENS_HARD_CAP = 50`, the per-batch loops in `cleanupBatch`, registry write fan-out | Benefits from real-token fork tests (§4.5.13 gap). |
+| 7 | §8 Storage Layout & Upgrade Story | Low — protocol is non-upgradeable; section states this and walks each contract's storage layout for completeness | None. |
+| 8 | §13 Emergency Response | Medium — playbook for the AD-flagged scenarios (oracle key compromise, ORACLE_ROLE compromise, router incident, Timelock-stuck proposal) | Depends on §9 and §10 to be drafted first. |
+| 9 | §14 Test Coverage Summary | Low–Medium — requires running `npx hardhat test` and `forge test` to reconcile the 167+35 scan vs 193+54 PR-claimed counts | **Action item: run both test suites and pipe to `tail` to capture the summary line.** |
+| 10 | §15 Out of Scope | Low — short list (off-chain signer infra, ORACLE_ROLE keeper service, frontend) | None. |
+| 11 | §16 Appendices (Glossary, EIP-712, Reward Formula derivation, Build & Reproducibility, Repo refs) | Medium | Reward-formula derivation pulls from §4.4.12 inline rationale. |
+| 12 | §12 Deployment Reference | Low — short stub + link to `docs/DEPLOYMENT.md` | **Blocker: `docs/DEPLOYMENT.md` does not yet exist.** Create alongside §12 drafting. |
+| 13 | §1 Document Purpose | Low | Write **last**, after every other section is final. |
+
+### Pending design acceptances (§10 — awaiting user severity ack)
+
+| AD | Title | Proposed severity | Origin |
+|---|---|---|---|
+| AD-01 | *reserved* | — | — |
+| AD-02 | ScamRegistry pause response window (48 h, no EMERGENCY backup; zero funds) | Low | §4.2.4 |
+| AD-03 | LandfillVault FoT amount-vs-event drift (no balanceBefore/After diff) | Low | §4.3.6 |
+| AD-04 | Deploy collapses LandfillVault role separation (all 4 roles → Timelock) | Low | §4.3.4 |
+| AD-05 | CleanupMining divide-before-multiply pattern (overflow protection trade-off) | Info | §4.4.12 |
+| AD-06 | GuardiansToken UTC mint bucket timestamp granularity | Info | §3.4 + §4.1 |
+| AD-07 | `oracleSigner` single-key risk (compromise → mint up to `MAX_MINT_PER_DAY`) | **Med** | §4.5.4 |
+| AD-08 | Swap-fail fallback → user loses token to landfill without BNB refund | **Low–Med** | §4.5.6 |
+| AD-09 | Per-token slippage = 0; sandwich-attack defense relies on caller-supplied `minBnbOut` | Info | §4.5.6 |
+| AD-10 | Timelock open executor (`executors = [address(0)]`) | Info | §4.6.4 |
+| AD-11 | BSC block-time variance (2.5–4 s) affects effective Governor voting window | Info | §4.7.10 |
+
+### Coverage gaps to flag in §14
+
+- `MockERC20` only — no fuzz/invariant against fee-on-transfer, rebasing, or ERC-777-callback tokens (§4.3.13).
+- No fork-test against real BSC PancakeRouter v2 (§4.5.13).
+- I-15 (`nonces[u]` monotonic) has no dedicated `invariant_*` handler — implicit only via `testFuzz_replayBlocked` (§4.5.13).
+- I-17 (Governor `onlyGovernance` self-amendment) not exercised end-to-end (§4.7.13).
+- Test-count reconciliation: agent-scan found 167 Hardhat + 35 Foundry; PRs claim 193 + 54. Must run both suites in §14.
 
 ---
 
@@ -687,7 +750,10 @@ The registry is the canonical source for invariant IDs used throughout this docu
 | I-12 | Σ over users of `totalRewardsEarned[u]` equals total GOTT minted via the cleanup-mining path (handler-tracked) | CleanupMining | Foundry `invariant_totalRewardsMatchTokenBalance` | — |
 | I-13 | `totalCleanupsExecuted == Σ over (user, epoch) of cleanupCountPerEpoch[u][e]` (global = per-epoch sum) | CleanupMining | Foundry `invariant_globalCountMatchesPerEpochSum` | — |
 | I-14 | `getCurrentEpoch()` is monotonically non-decreasing over time | CleanupMining | Foundry `invariant_epochMonotonic` | — |
-| *I-15+ to be added as §4.5 GarbageCollector and later contracts are drafted* | | | | |
+| I-15 | `nonces[u]` is monotonically non-decreasing per user, increments by exactly 1 per successful `cleanupBatch`, and is unchanged by `sendScamToLandfill` | GarbageCollector | *not yet covered by a dedicated `invariant_*` — implicit via `testFuzz_replayBlocked`* | Coverage gap noted in §4.5.13; audit firm may request a dedicated handler-tracked invariant. |
+| I-16 | Timelock `_minDelay ≥ 48h` for the lifetime of the protocol (modifiable only via self-proposal that itself clears the 48 h delay) | Timelock | *self-referential — enforced by the parameter machinery rather than a Foundry invariant* | Property of the OZ `TimelockController` module. Auditor may verify by inspection rather than via test. |
+| I-17 | Governor parameter changes (`votingDelay`, `votingPeriod`, `proposalThreshold`, `quorumNumerator`) are `onlyGovernance` — i.e., changeable only via a self-proposal executed by the Timelock | Governor | *not exercised end-to-end in current test suite — coverage gap flagged in §4.7.13* | Property of the OZ `GovernorSettings` + `GovernorVotesQuorumFraction` modules. |
+| *I-18+ reserved for §6 body-draft additions if needed* | | | | |
 
 ### Sub-section placeholders (to be filled in §6 body draft)
 
@@ -1141,6 +1207,575 @@ Cross-reference §14 for the consolidated project-wide suppression registry.
 | `test-foundry/CleanupMining.t.sol` | *verified in §14* | Fuzz: `testFuzz_rewardScalesLinearlyWithValue`, `testFuzz_epochAdvancesMonotonic`, `testFuzz_postMiningRewardIsZero`, `testFuzz_onlyCollectorCanRecord`, `testFuzz_setBaseRateBounded`, `testFuzz_setBaseRateRejectsOutOfBounds`. Invariants: `invariant_userRewardsMonotonic`, `invariant_totalRewardsMatchTokenBalance`, `invariant_globalCountMatchesPerEpochSum`, `invariant_epochMonotonic`. |
 
 Cross-reference to §6 invariants: I-11 (`totalRewardsEarned` monotonic), I-12 (sum-of-rewards matches token mint accounting), I-13 (global count = per-epoch sum), I-14 (epoch monotonic).
+
+---
+
+### §4.5 GarbageCollector
+
+**File:** `contracts/GarbageCollector.sol` (404 lines)
+**Deployed:** Phase A.6 (see §3.3) — once per network. Three external dependencies (`router`, `WBNB`, `scamRegistry`) are sealed as `immutable` at deploy; replacement requires a fresh deployment and governance migration of `COLLECTOR_ROLE` on CleanupMining.
+**Mutability:** Three protocol-wiring addresses (`miningContract`, `landfillVault`, `oracleSigner`) and three tuning parameters (`maxTokensPerCleanup`, `swapDeadlineBuffer`, `minCleanupValueUSD`) are mutable via `ADMIN_ROLE` setters. Everything else is fixed at deploy or `constant`.
+
+> **High-risk contract.** This is the only protocol contract that simultaneously: (a) verifies off-chain signatures (EIP-712), (b) holds and forwards native BNB, (c) interacts with an unaudited external dependency (PancakeRouter) and arbitrary user-supplied ERC-20s in the same call, and (d) is the sole external entry point for reward issuance. Sections §4.5.5 (CEI), §4.5.6 (internal helpers), and §4.5.12 (Slither) all warrant deeper review than the vanilla contracts above.
+
+#### 4.5.1 Purpose
+
+Main cleanup orchestrator. Pulls user-owned ERC-20s into this contract, swaps each to BNB via PancakeRouter (failure falls through to LandfillVault), forwards reward bookkeeping to `CleanupMining.recordCleanup`, and pays out the accumulated BNB to the user. Every cleanup batch is gated by an EIP-712 signature from `oracleSigner` over a `CleanupAuthorization` struct, which binds the off-chain-computed `cleanupValueUSD` to a specific user, batch, nonce, and deadline.
+
+#### 4.5.2 Inheritance (C3 linearization)
+
+Direct parents (declaration order, `GarbageCollector.sol:47`):
+
+```
+contract GarbageCollector is AccessControl, Pausable, ReentrancyGuard, EIP712
+```
+
+**Why direct-parent listing is sufficient.** Three of the four parents (`AccessControl`, `Pausable`, `ReentrancyGuard`) use legacy direct storage with disjoint variables — the same pattern as §4.3 and §4.4. The fourth, `EIP712`, stores `_HASHED_NAME` and `_HASHED_VERSION` in fixed slots set once in its own constructor; the v5 implementation also derives `_cachedDomainSeparator` and `_cachedChainId` from those slots at runtime. None of the parents override `_msgSender`, `_msgData`, or any shared hook function. There is no diamond-shape multiple-inheritance to resolve; C3 here is simply the declaration order with `Context` (transitive parent of `AccessControl` and `Pausable`) deduplicated by the compiler.
+
+**OZ v5.1.0-specific notes:**
+- Standard v5 custom errors: `AccessControlUnauthorizedAccount`, `EnforcedPause`, `ReentrancyGuardReentrantCall`.
+- `EIP712("GarbageCollector", "1")` — the name and version literals are folded into `_HASHED_NAME` and `_HASHED_VERSION` in the parent constructor (`GarbageCollector.sol:139`). Changing either string would change the domain separator and invalidate any in-flight signatures, so the auditor should confirm these match the literals used by the backend signer.
+- `ECDSA.recover` is the v5 implementation that reverts (rather than returning `address(0)`) on malleable / invalid signatures. This is the security property `_verifyAndConsumeAuth` relies on at L248.
+
+#### 4.5.3 Constructor
+
+```solidity
+constructor(
+    address admin,
+    address _router,
+    address _wbnb,
+    address _scamRegistry,
+    address _mining,
+    address _vault,
+    address _oracleSigner
+) EIP712("GarbageCollector", "1")
+```
+
+| Step in body | What it does | Source |
+|---|---|---|
+| 0 | `EIP712("GarbageCollector", "1")` parent constructor stores `_HASHED_NAME = keccak256("GarbageCollector")` and `_HASHED_VERSION = keccak256("1")` | parent init list, L139 |
+| 1 | Reverts with `ZeroAddress()` if `admin == 0` | L140 |
+| 2 | Reverts with `ZeroAddress()` if `_router == 0` | L141 |
+| 3 | Reverts with `ZeroAddress()` if `_wbnb == 0` | L142 |
+| 4 | Reverts with `ZeroAddress()` if `_scamRegistry == 0` | L143 |
+| 5 | Reverts with `ZeroAddress()` if `_mining == 0` | L144 |
+| 6 | Reverts with `ZeroAddress()` if `_vault == 0` | L145 |
+| 7 | Reverts with `ZeroAddress()` if `_oracleSigner == 0` | L146 |
+| 8 | Set `router = IPancakeRouter(_router)` (immutable) | L148 |
+| 9 | Set `WBNB = _wbnb` (immutable) | L149 |
+| 10 | Set `scamRegistry = IScamRegistry(_scamRegistry)` (immutable) | L150 |
+| 11 | Set `miningContract = ICleanupMining(_mining)` (mutable, rotatable) | L151 |
+| 12 | Set `landfillVault = _vault` (mutable, rotatable) | L152 |
+| 13 | Set `oracleSigner = _oracleSigner` (mutable, rotatable) | L153 |
+| 14 | `_grantRole(DEFAULT_ADMIN_ROLE, admin)` | L155 |
+| 15 | `_grantRole(ADMIN_ROLE, admin)` | L156 |
+| 16 | `_grantRole(PAUSER_ROLE, admin)` | L157 |
+
+**Mutable vs immutable wiring rationale.** The three external dependencies that are *operationally untrusted but architecturally fixed* (`router`, `WBNB`, `scamRegistry`) are immutable: a compromised admin cannot silently re-point the swap path or bypass the scam gate. The three that are *protocol-internal but expected to be upgraded* (`miningContract`, `landfillVault`, `oracleSigner`) are mutable, governed by `ADMIN_ROLE` = Timelock post-B.5. The split is deliberate: the audit firm should confirm that the mutable surface is acceptable given Timelock + 48 h delay.
+
+**`COLLECTOR_ROLE` flow.** This contract does not hold any role on itself for the reward path; rather, it is granted `COLLECTOR_ROLE` *on the CleanupMining contract* at Phase A.8 (see §3.3 and §4.4.4). The constructor wires `miningContract` but cannot grant itself the role — that step is post-deploy.
+
+#### 4.5.4 Roles
+
+| Role constant | Hash | Granted at deploy to | Steady-state holder | Renounce / transfer event | Can call |
+|---|---|---|---|---|---|
+| `DEFAULT_ADMIN_ROLE` | `0x00…00` (OZ built-in) | deployer (Phase A.6) | Timelock | Granted to Timelock + revoked from deployer at Phase B.5 (`scripts/transferAdminRoles.js:32`) | role management |
+| `ADMIN_ROLE` | `keccak256("ADMIN_ROLE")` | deployer (Phase A.6) | Timelock | Granted to Timelock + revoked from deployer at Phase B.5 (`scripts/transferAdminRoles.js:32`) | `setMiningContract`, `setLandfillVault`, `setOracleSigner`, `setMaxTokensPerCleanup`, `setMinCleanupValueUSD`, `setSwapDeadlineBuffer`, `withdrawStuckBNB` |
+| `PAUSER_ROLE` | `keccak256("PAUSER_ROLE")` | deployer (Phase A.6) | Timelock | Granted to Timelock + revoked from deployer at Phase B.5 (`scripts/transferAdminRoles.js:32`) | `pause()`, `unpause()` |
+
+**`oracleSigner` is NOT a role.** Unlike `ORACLE_ROLE` on ScamRegistry (§4.2.4), the backend signer here is a plain `address` stored in mutable state — there is no `AccessControl` registry entry, no `hasRole` query, and no `revokeRole` path. Rotation is `setOracleSigner(newSigner)` under `ADMIN_ROLE`. This is intentional: the EIP-712 signer is verified by `ECDSA.recover`, not by `hasRole`, so promoting it to a role would add storage and grant-event surface without security benefit.
+
+**Single-key risk.** The `oracleSigner` is one EOA whose private key signs every cleanup batch. Compromise = unlimited reward mint up to the daily cap enforced *downstream* on the token (§4.1.10 `MAX_MINT_PER_DAY = 1.4 M GOTT`). The 48 h Timelock can rotate the key, but the per-day cap is the only protocol-level bound during the rotation window. Tracked as §10 AD-07 (pending §10 draft, severity Med — see §4.5.12 cross-ref).
+
+**Pause response window (post-B.5):** Same shape as §4.2 and §4.4 — no EMERGENCY_ROLE backup; pause requires a Governor proposal subject to the full 48 h Timelock delay. The worst-case impact differs from those contracts because GarbageCollector *does* handle funds (user tokens during the swap path, BNB during payout). However:
+
+- Reentrancy guards on every state-mutating external function (§4.5.5) prevent in-flight exploitation of a single transaction.
+- The user's tokens are only at risk *during* their own `cleanupBatch` call — there is no long-lived custody.
+- A 48 h delay before pause means up to 48 h of continued reward issuance against a discovered exploit; this is bounded per-day by the token's `MAX_MINT_PER_DAY` cap.
+
+Acceptable, with §10 AD note flagging the absence of a fast-pause path.
+
+#### 4.5.5 Modifiers
+
+Custom modifiers defined on this contract: **none.**
+
+| Modifier | Source | Effect |
+|---|---|---|
+| `onlyRole(<ROLE>)` | `AccessControl` (inherited) | `AccessControlUnauthorizedAccount`. |
+| `whenNotPaused` | `Pausable` (inherited) | `EnforcedPause()`. Applied to `cleanupBatch` and `sendScamToLandfill`. |
+| `nonReentrant` | `ReentrancyGuard` (inherited) | `ReentrancyGuardReentrantCall()`. Applied to `cleanupBatch`, `sendScamToLandfill`, and `withdrawStuckBNB`. |
+
+**Stacked modifiers + CEI ordering on `cleanupBatch` (L174–218).** This is the single highest-risk state-mutating function in the protocol. The order of checks and effects is load-bearing and the auditor should walk it line-by-line:
+
+1. **Checks** —
+   - Length and bound checks (L184–187): length match, non-empty, ≤ `maxTokensPerCleanup`, `cleanupValueUSD ≥ minCleanupValueUSD`.
+   - `_verifyAndConsumeAuth` (L190 → internal helper L221–251): deadline, nonce equality, ECDSA recover, **nonce increment** (effect-during-checks; see note below).
+   - Scam pre-check loop (L194–197): `scamRegistry.isScamOrDrainer(tokens[i])` per token; reverts the whole batch if any flagged.
+
+2. **Effects** —
+   - The nonce increment in step 1 (`nonces[msg.sender] = expected + 1`, L250) is technically an "effect" but is placed inside the auth helper for atomicity with the verification — it cannot be reordered without breaking replay protection. CEI literalists would call this a violation, but it is the correct ordering: nonce *must* be incremented before any external call so a reentrant call from `msg.sender` cannot reuse the signature.
+   - Per-token swap loop (L200–202): `_swapTokenToBNB` is an *interaction* (calls `safeTransferFrom`, `forceApprove`, `router.swapExactTokensForETH`, or falls back to `safeTransfer` to vault on revert). The "effect" recorded by this loop is the change in `address(this).balance`, measured before/after via L199 and L203.
+   - `miningContract.recordCleanup(msg.sender, cleanupValueUSD, len)` (L207) — external call to the trusted CleanupMining contract, which mints GOTT to the user via the token. This is the reward effect.
+   - `emit CleanupExecuted(...)` (L209).
+
+3. **Interaction (CEI tail)** — BNB payout to user (L213–217) is the *last* state-affecting action. The low-level `call` is the canonical pattern for native-token transfer; `nonReentrant` plus the consumed nonce close the only realistic re-entry path (re-entry from `msg.sender`'s receive hook calling back into `cleanupBatch`).
+
+**Why the "swap inside the loop" doesn't break CEI in practice.** The classical CEI prohibition is "do not modify your contract's state after an external call." The state this contract owns is: nonces (incremented pre-loop), the AccessControl/Pausable bookkeeping (modifier-level), and the ReentrancyGuard slot. None of these are written during the swap loop. The `address(this).balance` change is *EVM-managed state*, not contract storage, and is the intended carrier of the swap output. The auditor should confirm that no future addition of contract-owned state writes inside the loop is allowed without re-deriving this safety argument.
+
+**Consistency check** — every state-mutating external function and its modifier stack:
+
+| Function | `onlyRole` | `whenNotPaused` | `nonReentrant` | Notes |
+|---|---|---|---|---|
+| `cleanupBatch(...)` | — (sig-auth, not role-auth) | ✓ | ✓ | The critical path. Auth via EIP-712 sig. |
+| `sendScamToLandfill(...)` | — (open to any user) | ✓ | ✓ | No sig required; deliberate (see §4.5.6). |
+| `setMiningContract` | `ADMIN_ROLE` | — | — | Pure config; emits event. |
+| `setLandfillVault` | `ADMIN_ROLE` | — | — | Same. |
+| `setOracleSigner` | `ADMIN_ROLE` | — | — | Same. Key rotation path. |
+| `setMaxTokensPerCleanup` | `ADMIN_ROLE` | — | — | Bound-checked against `MAX_TOKENS_HARD_CAP`. |
+| `setMinCleanupValueUSD` | `ADMIN_ROLE` | — | — | Non-zero. |
+| `setSwapDeadlineBuffer` | `ADMIN_ROLE` | — | — | `0 < newBuffer ≤ 1 days`. |
+| `withdrawStuckBNB` | `ADMIN_ROLE` | — | ✓ | `nonReentrant` defense-in-depth against admin error / proxy admin. |
+| `pause()` | `PAUSER_ROLE` | n/a | n/a | — |
+| `unpause()` | `PAUSER_ROLE` | n/a | n/a | — |
+| `hashCleanupAuth(...)` | — | — | — | `view`, off-chain helper. |
+
+#### 4.5.6 External / Public Functions
+
+| Signature | Modifiers | Returns | Purpose | Emits |
+|---|---|---|---|---|
+| `cleanupBatch(address[] tokens, uint256[] amounts, uint256 minBnbOut, uint256 cleanupValueUSD, uint256 nonce, uint256 deadline, bytes signature)` | `nonReentrant`, `whenNotPaused` | `uint256 totalBnbReceived` | Sig-authorised swap-and-reward batch. Pulls each `tokens[i]` from `msg.sender`, swaps to BNB (or falls back to vault), totals received BNB, calls `recordCleanup`, then forwards BNB to user. | `CleanupExecuted(user, tokens, amounts, bnbReceived, cleanupValueUSD)`, plus per-token `SwapFallbackToLandfill` on swap revert. |
+| `sendScamToLandfill(address[] tokens, uint256[] amounts)` | `nonReentrant`, `whenNotPaused` | — | Explicit per-user push of arbitrary ERC-20s to LandfillVault. **No signature, no scam-classification check** — the user opts in to the loss; this is the "dump" path for tokens they cannot or will not route through `cleanupBatch`. No reward, no `recordCleanup`, no nonce consumption. | `ScamTokenSent(user, token, amount)` per token. |
+| `hashCleanupAuth(address user, address[] tokens, uint256[] amounts, uint256 cleanupValueUSD, uint256 nonce, uint256 deadline)` | `external view` | `bytes32` | Computes the EIP-712 digest the backend `oracleSigner` must sign. Caller-side parity check for the backend; no state read beyond `_HASHED_NAME` / `_HASHED_VERSION` / chainId. | — |
+| `setMiningContract(address)` | `onlyRole(ADMIN_ROLE)` | — | Rotate `miningContract`. Zero-rejected. **Does not unwind COLLECTOR_ROLE on the old mining contract** — that revocation is a separate DAO proposal (caller responsibility). | `MiningContractChanged(old, new)` |
+| `setLandfillVault(address)` | `onlyRole(ADMIN_ROLE)` | — | Rotate `landfillVault`. Affects both `sendScamToLandfill` destination and the swap-fail fallback target in `_swapTokenToBNB`. | `LandfillVaultChanged(old, new)` |
+| `setOracleSigner(address)` | `onlyRole(ADMIN_ROLE)` | — | Rotate the EIP-712 signer EOA. **In-flight signatures from the previous signer remain valid until their deadline** — the contract does not invalidate pre-signed authorizations on rotation. The deadline window plus per-user nonce uniqueness bounds this. | `OracleSignerChanged(old, new)` |
+| `setMaxTokensPerCleanup(uint256)` | `onlyRole(ADMIN_ROLE)` | — | Adjust per-batch cap. Validates `0 < newMax ≤ MAX_TOKENS_HARD_CAP` (50). | `MaxTokensChanged(old, new)` |
+| `setMinCleanupValueUSD(uint256)` | `onlyRole(ADMIN_ROLE)` | — | Adjust dust-floor. Validates `newMin > 0`. | `MinCleanupValueChanged(old, new)` |
+| `setSwapDeadlineBuffer(uint256)` | `onlyRole(ADMIN_ROLE)` | — | Adjust the `block.timestamp + buffer` deadline passed to Pancake. Validates `0 < newBuffer ≤ 1 days`. | `SwapDeadlineBufferChanged(old, new)` |
+| `withdrawStuckBNB(address to)` | `onlyRole(ADMIN_ROLE)`, `nonReentrant` | — | Sweep the BNB balance to `to`. Returns silently when balance is zero (no revert, no event). Slither `arbitrary-send-eth` suppressed (see §4.5.12). | `StuckBNBWithdrawn(to, amount)` (only when amount > 0) |
+| `pause()` | `onlyRole(PAUSER_ROLE)` | — | Halts `cleanupBatch` and `sendScamToLandfill`. Does *not* halt `withdrawStuckBNB` (intentional — see §4.5.12). | OZ `Paused(account)` |
+| `unpause()` | `onlyRole(PAUSER_ROLE)` | — | Lifts pause. | OZ `Unpaused(account)` |
+
+**Inherited public surface:**
+
+- **AccessControl:** `hasRole(bytes32,address)`, `getRoleAdmin(bytes32)`, `grantRole(bytes32,address)`, `revokeRole(bytes32,address)`, `renounceRole(bytes32,address)`, `supportsInterface(bytes4)`.
+- **Pausable:** `paused()`.
+- **ReentrancyGuard:** no new public functions.
+- **EIP712:** `eip712Domain()` returns the canonical domain struct (ERC-5267); off-chain signers should read this rather than hardcoding the domain.
+
+**Internal helpers worth audit attention:**
+
+1. **`_verifyAndConsumeAuth(...)` (L221–251)** — extracted from `cleanupBatch` to avoid stack-too-deep. **Encodes the entire EIP-712 invariant.** Reviewer should verify:
+   - `block.timestamp > deadline` (L233) — strict `>`, so a transaction included exactly at `deadline` is still valid.
+   - Nonce equality check uses `nonces[msg.sender]` (the *caller's* nonce, not the signed `user` field) — this is consistent because the signed digest at L242 binds `msg.sender` via the first encoded field, so a forwarded signature for a different user would fail the digest match. The defense is in the digest, not the nonce path.
+   - `keccak256(abi.encode(tokens, amounts))` (L242) — `abi.encode`, not `encodePacked`, prevents length-shift ambiguity (`[a,b]` cannot be confused with `[ab]` because the encoded form includes lengths and offsets).
+   - `ECDSA.recover` reverts on malformed signatures in OZ v5; a returned address equal to `oracleSigner` is the only success path.
+
+2. **`_swapTokenToBNB(token, amount, from)` (L283–309)** — encapsulates the per-token swap including the failure fallback. Reviewer should verify:
+   - `safeTransferFrom` then `forceApprove(router, amount)` (L285–286) — `forceApprove` resets allowance to zero first when needed (USDT-style approve-race protection).
+   - `try ... catch` on `router.swapExactTokensForETH` (L295–308). On revert: `forceApprove(router, 0)` (L305) clears the approval to prevent the router from later draining the contract via a stale allowance, then `safeTransfer(landfillVault, amount)` (L306) forwards the tokens.
+   - **The swap-fail fallback is the protocol's biggest user-facing UX wart.** A user whose token fails to swap loses that token to the vault but is still charged for it in the `cleanupValueUSD` total (the signature is over the entire batch). Their batch-level `minBnbOut` provides the only refund path — if the surviving swaps don't hit `minBnbOut`, the whole transaction reverts and all tokens are restored. Tracked as §10 AD-08 (severity Low–Med, pending §10 draft).
+   - Per-token slippage is 0 (L297: `amountOutMin = 0`). The defense is the batch-level `totalBnbReceived < minBnbOut` check (L204), which makes `minBnbOut` user-supplied and frontend-computed. Sandwich-attack resistance therefore depends on whether the frontend tracks per-block mempool exposure. Tracked as §10 AD-09 (severity Info, design intent).
+
+#### 4.5.7 Public State Variables (auto-getters)
+
+**Mutable protocol wiring:**
+
+| Variable | Type | Getter signature | Notes |
+|---|---|---|---|
+| `miningContract` | `ICleanupMining` | `miningContract() returns (ICleanupMining)` | Target of `recordCleanup`. Rotatable. |
+| `landfillVault` | `address` | `landfillVault() returns (address)` | Sink for `sendScamToLandfill` and swap-fail fallback. |
+| `oracleSigner` | `address` | `oracleSigner() returns (address)` | EIP-712 signer EOA. |
+
+**Tuning parameters:**
+
+| Variable | Type | Default | Getter signature |
+|---|---|---|---|
+| `maxTokensPerCleanup` | `uint256` | 20 | `maxTokensPerCleanup() returns (uint256)` |
+| `swapDeadlineBuffer` | `uint256` | `10 minutes` | `swapDeadlineBuffer() returns (uint256)` |
+| `minCleanupValueUSD` | `uint256` | `1e18` ($1, 1e18-scaled) | `minCleanupValueUSD() returns (uint256)` |
+
+**Per-user state:**
+
+| Variable | Type | Semantics |
+|---|---|---|
+| `nonces` | `mapping(address => uint256)` | Monotonic per-user counter. Auto-getter: `nonces(address) returns (uint256)`. Incremented exactly once per successful `cleanupBatch`. **Not incremented by `sendScamToLandfill`** (no signature consumed). See I-15 (§6). |
+
+(Immutables and constants — listed in §4.5.10.)
+
+#### 4.5.8 Custom Errors
+
+| Error | Signature | When thrown | Thrown by |
+|---|---|---|---|
+| `ZeroAddress()` | `error ZeroAddress()` | Any zero-address rejection. | constructor (L140–146), `setMiningContract` (L335), `setLandfillVault` (L342), `setOracleSigner` (L349), `withdrawStuckBNB` (L383) |
+| `InvalidLength()` | `error InvalidLength()` | Length mismatch or zero-length input arrays. | `cleanupBatch` (L184–185), `sendScamToLandfill` (L266–267) |
+| `TooManyTokens()` | `error TooManyTokens()` | Batch exceeds `maxTokensPerCleanup`. | `cleanupBatch` (L186) |
+| `BelowMinThreshold()` | `error BelowMinThreshold()` | `cleanupValueUSD < minCleanupValueUSD`. | `cleanupBatch` (L187) |
+| `InsufficientBnbOut(uint256 received, uint256 minOut)` | `error InsufficientBnbOut(uint256,uint256)` | Total BNB after swaps below user-supplied `minBnbOut`. Echoes both values for caller diagnosis. | `cleanupBatch` (L204) |
+| `BnbTransferFailed()` | `error BnbTransferFailed()` | Low-level `call` to send BNB returned `false`. | `cleanupBatch` (L216), `withdrawStuckBNB` (L390) |
+| `InvalidMaxTokens()` | `error InvalidMaxTokens()` | `setMaxTokensPerCleanup` argument is 0 or > `MAX_TOKENS_HARD_CAP`. | `setMaxTokensPerCleanup` (L356) |
+| `InvalidMinCleanupValue()` | `error InvalidMinCleanupValue()` | `setMinCleanupValueUSD` argument is 0. | `setMinCleanupValueUSD` (L363) |
+| `InvalidSwapDeadlineBuffer()` | `error InvalidSwapDeadlineBuffer()` | `setSwapDeadlineBuffer` argument is 0 or > 1 day. | `setSwapDeadlineBuffer` (L370) |
+| `TokenIsScam(address token)` | `error TokenIsScam(address)` | A token in the batch is flagged in ScamRegistry. Identifies the specific token for caller diagnosis. | `cleanupBatch` (L196) |
+| `InvalidSignature()` | `error InvalidSignature()` | ECDSA recovery returns a signer ≠ `oracleSigner`. | `_verifyAndConsumeAuth` (L248) |
+| `SignatureExpired()` | `error SignatureExpired()` | `block.timestamp > deadline`. | `_verifyAndConsumeAuth` (L233) |
+| `InvalidNonce(uint256 expected, uint256 provided)` | `error InvalidNonce(uint256,uint256)` | Submitted nonce ≠ `nonces[msg.sender]`. Echoes both for caller diagnosis. | `_verifyAndConsumeAuth` (L236) |
+
+#### 4.5.9 Events
+
+| Event | Signature | Emitted by | Notes |
+|---|---|---|---|
+| `CleanupExecuted` | `(address indexed user, address[] tokens, uint256[] amounts, uint256 bnbReceived, uint256 cleanupValueUSD)` | `cleanupBatch` (L209) | Single per-batch success event. `tokens`/`amounts` are the *originally submitted* arrays — they include any that fell through to the vault (also surfaced via `SwapFallbackToLandfill`). |
+| `ScamTokenSent` | `(address indexed user, address indexed token, uint256 amount)` | `sendScamToLandfill` (L271) | One per token per call. No per-call aggregate event. |
+| `SwapFallbackToLandfill` | `(address indexed user, address indexed token, uint256 amount)` | `_swapTokenToBNB` catch branch (L307) | One per failed swap inside `cleanupBatch`. Off-chain indexers should cross-reference with `CleanupExecuted` to reconstruct per-token outcome. |
+| `MiningContractChanged` | `(address indexed oldAddr, address indexed newAddr)` | `setMiningContract` (L338) | — |
+| `LandfillVaultChanged` | `(address indexed oldAddr, address indexed newAddr)` | `setLandfillVault` (L345) | — |
+| `OracleSignerChanged` | `(address indexed oldAddr, address indexed newAddr)` | `setOracleSigner` (L352) | Signer rotation. |
+| `MaxTokensChanged` | `(uint256 oldMax, uint256 newMax)` | `setMaxTokensPerCleanup` (L359) | — |
+| `MinCleanupValueChanged` | `(uint256 oldValue, uint256 newValue)` | `setMinCleanupValueUSD` (L366) | — |
+| `SwapDeadlineBufferChanged` | `(uint256 oldBuffer, uint256 newBuffer)` | `setSwapDeadlineBuffer` (L373) | — |
+| `StuckBNBWithdrawn` | `(address indexed to, uint256 amount)` | `withdrawStuckBNB` (L387) | Only emitted when `amount > 0`. Zero-balance call is a silent no-op. |
+
+**Inherited events:**
+
+- **AccessControl:** `RoleGranted`, `RoleRevoked`, `RoleAdminChanged`.
+- **Pausable:** `Paused`, `Unpaused`.
+
+#### 4.5.10 Immutables & Constants
+
+**Category A — compile-time `constant`:**
+
+| Name | Type | Value | Notes |
+|---|---|---|---|
+| `ADMIN_ROLE` | `bytes32` | `keccak256("ADMIN_ROLE")` | Conventional protocol role hash. |
+| `PAUSER_ROLE` | `bytes32` | `keccak256("PAUSER_ROLE")` | Conventional protocol role hash. |
+| `MAX_TOKENS_HARD_CAP` | `uint256` | `50` | Upper bound for `setMaxTokensPerCleanup`. Gas/DoS ceiling: even with the maximum batch size, the per-batch loops (scam pre-check + swap loop) stay within block gas at BSC's 30 M block limit by a comfortable margin. The audit firm may want to verify this via a gas-profiling fuzz against `MAX_TOKENS_HARD_CAP = 50` with adversarial-cost ERC-20 implementations. |
+| `CLEANUP_AUTH_TYPEHASH` | `bytes32` | `keccak256("CleanupAuthorization(address user,bytes32 batchHash,uint256 cleanupValueUSD,uint256 nonce,uint256 deadline)")` | EIP-712 struct hash. Must match the backend signer's typehash bit-for-bit. The string literal at L85 is the authoritative form; the comment at L83 is documentation only. |
+
+**Category B — constructor-set `immutable`:**
+
+| Name | Type | Set at L | Bound to |
+|---|---|---|---|
+| `router` | `IPancakeRouter` | 148 | The PancakeRouter address on the target network. Cannot be re-pointed — a malicious or replaced router cannot be silently injected. |
+| `WBNB` | `address` | 149 | Canonical WBNB on BSC. Used as the second hop in every swap path. |
+| `scamRegistry` | `IScamRegistry` | 150 | The ScamRegistry deployed at Phase A.3. Cannot be re-pointed; the swap-gate dependency is sealed. |
+
+**EIP-712 implicit immutables (from parent):**
+
+| Name | Set at | Notes |
+|---|---|---|
+| `_HASHED_NAME` | parent constructor at L139 (`EIP712("GarbageCollector", "1")`) | `keccak256("GarbageCollector")` |
+| `_HASHED_VERSION` | parent constructor at L139 | `keccak256("1")` |
+
+These determine the domain separator and therefore the validity of every in-flight signature. Changing the contract name or version literal in source would invalidate all existing oracle signatures and require a backend-coordinated rotation.
+
+**Bridge note for the auditor.** §4.5 GarbageCollector is the protocol's largest single contract surface (404 source lines, 9 logical Slither suppressions over 10 inline comment lines, 13 custom errors). Where §4.4 CleanupMining encapsulates the *math* of the reward formula, §4.5 encapsulates the *trust boundary* — the place where off-chain inputs (signatures, oracle classifications, router quotes) cross into on-chain effects. §10 will collect the design acceptances (AD-07/AD-08/AD-09) for this trust boundary.
+
+#### 4.5.11 Receive / Fallback
+
+```solidity
+receive() external payable {}
+```
+
+**Empty `receive()` at L403.** Required because PancakeRouter's `swapExactTokensForETH` sends the swap output as native BNB via a low-level call to `address(this)`; without a `receive`, every swap would revert.
+
+**No `fallback()` defined.** Any call with unknown selector reverts (the OZ v5 default). External CALL with non-empty calldata and a non-existent selector triggers the implicit revert; this is the correct behavior — there is no upgrade path or proxy delegation surface for this contract.
+
+#### 4.5.12 Slither Suppressions
+
+**Total directives on this contract: 9 logical** (1 paired-block + 8 next-line, 10 raw inline lines). Every suppression has an inline `WHY` comment and is load-bearing for an external integration constraint. Suppressions are grouped below in source order; the auditor should walk each one in context.
+
+| Lines | Directive | Detector(s) | Rationale (verbatim from inline comments + reviewer summary) |
+|---|---|---|---|
+| 12–25 | `// slither-disable-start naming-convention` / `end` | `naming-convention` | Local `IPancakeRouter` interface declares `WETH()` in screaming case to mirror PancakeRouter's deployed getter name. Solidity requires interface function names to exactly match the implementation's signature for ABI compatibility — the literal `WETH()` is the on-chain selector and cannot be camelCased. Same pattern as the `MAX_MINT_PER_DAY()` interface in §4.4.2. |
+| 61 | `// slither-disable-next-line naming-convention` | `naming-convention` | `WBNB` immutable uses SCREAMS_CASE for visual parity with the upstream `WETH` ticker convention on Uniswap V2-style routers. Same documented rationale as the interface above. |
+| 195 | `// slither-disable-next-line calls-loop` | `calls-loop` | Scam pre-check loop calls `scamRegistry.isScamOrDrainer(tokens[i])` per token. Gas is bounded by `maxTokensPerCleanup ≤ MAX_TOKENS_HARD_CAP = 50` (§4.5.10), and the callee is the immutable `scamRegistry` whose `isScamOrDrainer` is a single-SLOAD view function (§4.2.6). Slither flags "external call in loop" for DoS concerns; the bound and the callee both rule that out. |
+| 214 | `// slither-disable-next-line low-level-calls` | `low-level-calls` | `msg.sender.call{value: totalBnbReceived}("")` is the canonical low-level pattern for forwarding native BNB. `transfer`/`send` are no longer recommended (2300-gas stipend can break with EOA-as-contract recipients on BSC). `nonReentrant` covers the re-entry concern; the call value is the locally-computed `totalBnbReceived`. |
+| 232 | `// slither-disable-next-line timestamp` | `timestamp` | EIP-712 deadline check (`block.timestamp > deadline`). This is the canonical signature-expiry pattern (Permit2, EIP-2612, every meta-tx framework). Slither's `timestamp` warning is a false positive for signature expiry — miner timestamp manipulation has a ~3 s blast radius on BSC, which is irrelevant against deadlines measured in minutes. |
+| 294 | `// slither-disable-next-line calls-loop,unused-return` | `calls-loop`, `unused-return` | Two detectors silenced together: (1) `calls-loop` — same rationale as L195; the swap loop is gas-bounded and the callee is the immutable `router`. (2) `unused-return` — `swapExactTokensForETH` returns the per-hop amount array, but the contract intentionally measures BNB delta at the *batch level* via `address(this).balance` deltas (L199/L203) rather than summing the return arrays. This is robust against any router that under-reports its output (deflationary tokens, fee-on-transfer pairs) and avoids per-token accounting that would conflict with the batch-level `minBnbOut` invariant. |
+| 381 | `// slither-disable-next-line arbitrary-send-eth` | `arbitrary-send-eth` | `withdrawStuckBNB(address to)` lets `ADMIN_ROLE` choose the recipient of a BNB sweep. Slither flags admin-chosen recipients as `arbitrary-send-eth`. False positive: the recipient is constrained to a Timelock-authored proposal post-B.5, so the "arbitrary" surface is the same as any DAO-controlled treasury sweep. The function is gated by `onlyRole(ADMIN_ROLE)` + `nonReentrant`. Tracked as §10 design acceptance for admin sweep authority. |
+| 385 | `// slither-disable-next-line incorrect-equality` | `incorrect-equality` | Early-return on `amount == 0` before emitting `StuckBNBWithdrawn` — avoids a no-op event for an empty sweep. Same defensive `==` pattern as §4.3.12 LandfillVault L114. False positive for "comparison against externally-sourced value." |
+| 388 | `// slither-disable-next-line low-level-calls` | `low-level-calls` | Native BNB transfer in `withdrawStuckBNB`. Same rationale as L214; `nonReentrant` plus the admin-only modifier close the re-entry surface. |
+
+**Why `withdrawStuckBNB` is not pause-gated.** The function is admin-only and intended as a recovery tool for BNB that lands in the contract outside the normal `cleanupBatch` flow (donations, dust, future Pancake-router edge cases). If the contract is paused due to an exploit in `cleanupBatch`, the recovery path must remain open — pausing it would trap recoverable funds. The `arbitrary-send-eth` suppression therefore depends on the audit firm accepting that `ADMIN_ROLE` (= Timelock post-B.5) is trusted for this specific destination authority. AD candidate (§10), severity Info.
+
+Cross-reference §14 for the consolidated project-wide suppression registry.
+
+#### 4.5.13 Test Coverage Reference
+
+| Test file | Test count | Notable coverage |
+|---|---|---|
+| `test/GarbageCollector.test.js` | *verified in §14* | Deployment (7-way zero-address rejection in constructor, oracleSigner stored, nonce starts at 0, `hashCleanupAuth` matches off-chain digest), happy-path `cleanupBatch` (swap → BNB to user → reward minted → nonce ++), signature semantics (non-oracle key → `InvalidSignature`, expired deadline, nonce mismatch, **replay rejection on second call**, mismatched tokens vs signed batch, sig for a different `user` vs `msg.sender`, oracle-key rotation via `setOracleSigner`), validation (length mismatch, empty arrays, `TooManyTokens`, `BelowMinThreshold`, `TokenIsScam`, `InsufficientBnbOut`), swap-failure fallback (single token → vault still completes batch; entire batch fails → 0 BNB but `recordCleanup` still fires), `sendScamToLandfill` (no reward, no nonce consumption, length checks, paused gate), pause coverage (both paths blocked), admin setters (role + zero + bound checks, event emission), `withdrawStuckBNB` (role gate, zero-address rejection, full-balance sweep). |
+| `test-foundry/GarbageCollector.t.sol` | *verified in §14* | Fuzz: `testFuzz_cleanupBatchPaysExpectedBNB`, `testFuzz_invalidSignerReverts`, `testFuzz_expiredDeadlineReverts`, `testFuzz_replayBlocked`, `testFuzz_scamTokenReverts`, `testFuzz_swapFailureRoutesToLandfill`, `testFuzz_sendScamToLandfillNoReward`. Targeted: `test_pauseBlocksBothPaths`, `test_withdrawStuckBNB`. **No invariant test yet for `nonces[u]` monotonicity (I-15);** the property is implicitly tested via `testFuzz_replayBlocked` (a successful second call to the same `nonce` reverts) but lacks a dedicated `invariant_*` handler. Audit firm may flag this as a coverage gap. |
+
+Cross-reference to §6 invariants: **I-15** (per-user nonce monotonic — added to registry; see §6).
+
+**Coverage gap to flag for the auditor.** The Hardhat suite uses a `MockPancakeRouter` that always succeeds at a fixed 1:1 token→BNB rate and a `MockRevertingRouter` for the failure-fallback path. There is **no fork-test against the real BSC PancakeRouter** in either suite. The audit firm should consider running fork tests against PancakeRouter v2 (`0x10ED43C7…E4cD16Ce`) with a representative set of real BSC token pairs (high-liquidity, low-liquidity, fee-on-transfer, rebasing) to validate the swap path under production routing conditions. This is also where the per-token-slippage-0 design decision (AD-09 candidate, §4.5.6) gets its real-world stress test.
+
+---
+
+### §4.6 GuardiansTimelockController
+
+**File:** `contracts/governance/GuardiansTimelockController.sol` (24 lines)
+**Deployed:** Phase B.1 (see §3.3) — once per network, never re-deployed.
+**Mutability:** Vanilla OZ `TimelockController`. The contract source contains **zero custom logic** — it is a constructor pass-through. All semantics are inherited from `@openzeppelin/contracts/governance/TimelockController.sol` (v5.1.0).
+
+#### 4.6.1 Purpose
+
+Holds the queueing and execution machinery for DAO proposals after Phase B.5. Every protocol contract's `DEFAULT_ADMIN_ROLE` and operational role (`MINTER`, `ADMIN`, `DAO`, `EMERGENCY`, `PAUSER`) is granted to this contract; every admin parameter change therefore enters a queue subject to the configured `minDelay` before it can be executed. The instance for this protocol is parameterised at deploy with **`minDelay = 48 hours`**.
+
+#### 4.6.2 Inheritance (C3 linearization)
+
+Direct parent (declaration order, `GuardiansTimelockController.sol:17`):
+
+```
+contract GuardiansTimelockController is TimelockController
+```
+
+**Why direct-parent listing is sufficient.** Single inheritance, no diamond shape. `TimelockController` in OZ v5.1.0 inherits from `AccessControl` and `IERC721Receiver` / `IERC1155Receiver` (the latter two to accept NFTs queued through governance proposals, irrelevant to this protocol). No overrides, no `super` calls — the child contract adds nothing.
+
+**OZ v5.1.0-specific notes:**
+- `TimelockController` exposes four roles: `DEFAULT_ADMIN_ROLE` (held by `admin` constructor arg), `PROPOSER_ROLE`, `EXECUTOR_ROLE`, `CANCELLER_ROLE`. The Governor is granted `PROPOSER` and `CANCELLER` at Phase B.3/B.4; `EXECUTOR_ROLE` is held by `address(0)` at deploy (open execution).
+- Standard v5 custom errors: `TimelockUnauthorizedCaller`, `TimelockInsufficientDelay`, `TimelockInvalidOperationLength`, `TimelockUnexpectedOperationState`, `TimelockUnexecutedPredecessor`.
+
+#### 4.6.3 Constructor
+
+```solidity
+constructor(
+    uint256 minDelay,
+    address[] memory proposers,
+    address[] memory executors,
+    address admin
+) TimelockController(minDelay, proposers, executors, admin) {}
+```
+
+**Body is empty.** All initialisation happens in the OZ `TimelockController` constructor, which:
+
+1. Sets `_minDelay = minDelay`.
+2. Grants `DEFAULT_ADMIN_ROLE` to `admin` (the deployer at Phase B.1; renounced at Phase B.6).
+3. Grants `PROPOSER_ROLE` and `CANCELLER_ROLE` to each address in `proposers` (empty array at Phase B.1 — Governor is granted these roles separately at Phase B.3/B.4 via `grantRole`).
+4. Grants `EXECUTOR_ROLE` to each address in `executors` (`[address(0)]` at Phase B.1 — open execution, see §4.6.4 below).
+
+**Deploy-time values (per `scripts/deployGovernance.js` and §3.3 B.1):**
+
+| Constructor arg | Value | Notes |
+|---|---|---|
+| `minDelay` | `48 hours` (172,800 seconds) | The DAO's minimum review window. Cannot be reduced without a self-proposal that itself passes the 48 h delay. |
+| `proposers` | `[]` | Empty at deploy; Governor granted `PROPOSER_ROLE` at Phase B.3. |
+| `executors` | `[address(0)]` | Open execution — anyone can call `execute(...)` on a queued operation once its delay has elapsed. See §4.6.4. |
+| `admin` | deployer EOA | Temporary; renounced at Phase B.6 (`renounceRole(DEFAULT_ADMIN_ROLE, deployer)` called on the Timelock itself). |
+
+#### 4.6.4 Roles
+
+| Role constant | Hash | Granted at deploy to | Steady-state holder | Renounce / transfer event | Can call |
+|---|---|---|---|---|---|
+| `DEFAULT_ADMIN_ROLE` | `0x00…00` | deployer (Phase B.1) | **nobody** (renounced at Phase B.6) | `renounceRole` self-call at Phase B.6 — the load-bearing final lock; after this, parameter changes on the Timelock itself (e.g., `updateDelay`) require a Timelock proposal targeting itself with the 48 h delay | role management |
+| `PROPOSER_ROLE` | `keccak256("PROPOSER_ROLE")` | none (empty array at deploy) | Governor | Granted to Governor at Phase B.3 (`grantRole(PROPOSER_ROLE, governor)` called by deployer-admin) | `schedule(...)`, `scheduleBatch(...)`, `cancel(...)` (overlapping with CANCELLER) |
+| `CANCELLER_ROLE` | `keccak256("CANCELLER_ROLE")` | none (empty array at deploy — OZ v5 also grants this implicitly to anyone in the `proposers` array) | Governor | Granted to Governor at Phase B.4 | `cancel(bytes32 id)` |
+| `EXECUTOR_ROLE` | `keccak256("EXECUTOR_ROLE")` | `address(0)` (Phase B.1 — open execution) | `address(0)` (anyone) | Not transferred | `execute(...)`, `executeBatch(...)` after the delay window |
+
+**Open executor — design acceptance (AD candidate).** `executors = [address(0)]` means OZ's `TimelockController` skips the `onlyRoleOrOpenRole(EXECUTOR_ROLE)` gate on `execute*` (the v5 helper short-circuits when `hasRole(role, address(0)) == true`). Practical effect: once a proposal has been queued by the Governor and its 48 h delay has elapsed, **anyone** can pay the gas to execute it. This is the canonical OZ-recommended setup for public DAOs — it removes liveness dependence on a designated relayer. The audit firm should confirm that this is the intent. Tracked as §10 AD-10 (severity Info — by design, awaiting user ack).
+
+#### 4.6.5 Modifiers
+
+The child contract defines none. Inherited from OZ `TimelockController`:
+
+| Modifier | Source | Effect |
+|---|---|---|
+| `onlyRole(<ROLE>)` | `AccessControl` (inherited) | `AccessControlUnauthorizedAccount`. |
+| `onlyRoleOrOpenRole(EXECUTOR_ROLE)` | OZ `TimelockController` internal helper | Short-circuits when `hasRole(EXECUTOR_ROLE, address(0))` — the open-execution path. |
+
+#### 4.6.6 External / Public Functions
+
+The child contract defines none. Full external surface inherited verbatim from OZ `TimelockController` v5.1.0:
+
+- **Operation lifecycle:** `schedule`, `scheduleBatch`, `cancel`, `execute`, `executeBatch`, `updateDelay`.
+- **Operation queries:** `isOperation`, `isOperationPending`, `isOperationReady`, `isOperationDone`, `getTimestamp`, `getMinDelay`, `hashOperation`, `hashOperationBatch`.
+- **AccessControl surface:** `hasRole`, `getRoleAdmin`, `grantRole`, `revokeRole`, `renounceRole`, `supportsInterface`.
+
+The audit firm should treat the v5.1.0 `TimelockController` as its own audit subject — it is the canonical OZ contract and has been independently audited multiple times. The protocol-specific question is **only** the constructor parameterisation (§4.6.3) and the role wiring at Phase B.3–B.6.
+
+#### 4.6.7 Public State Variables (auto-getters)
+
+The child contract defines none. Inherited from OZ `TimelockController`:
+
+| Variable | Type | Getter | Notes |
+|---|---|---|---|
+| `_minDelay` | `uint256` (private) | `getMinDelay()` | Returns the configured 48 h. |
+| `_timestamps` | `mapping(bytes32 => uint256)` (private) | `getTimestamp(bytes32)` | Per-operation ready-time. |
+
+#### 4.6.8 Custom Errors
+
+The child contract defines none. Inherited from OZ `TimelockController`: `TimelockUnauthorizedCaller`, `TimelockInsufficientDelay`, `TimelockInvalidOperationLength`, `TimelockUnexpectedOperationState`, `TimelockUnexecutedPredecessor`.
+
+#### 4.6.9 Events
+
+The child contract defines none. Inherited: `CallScheduled`, `CallExecuted`, `CallSalt`, `Cancelled`, `MinDelayChange`, plus AccessControl's `RoleGranted` / `RoleRevoked` / `RoleAdminChanged`.
+
+#### 4.6.10 Immutables & Constants
+
+The child contract defines none. The OZ `TimelockController` storage layout is fully mutable — `_minDelay` is updatable via `updateDelay` (self-call, requires a queued proposal). No `immutable` slots.
+
+#### 4.6.11 Receive / Fallback
+
+OZ `TimelockController` defines `receive() external payable {}` to accept BNB for proposals that send native value (e.g., a treasury withdrawal proposal). The child contract does not override.
+
+#### 4.6.12 Slither Suppressions
+
+**Total directives on this contract: 0.** The child has no logic; the parent (OZ `TimelockController` v5.1.0) carries the canonical audited Slither profile.
+
+#### 4.6.13 Test Coverage Reference
+
+| Test file | Test count | Notable coverage |
+|---|---|---|
+| `test/Governance.test.js` | *verified in §14* | Shared with §4.7 Governor. Deployment: Timelock 48 h min delay assertion; Governor wired with `PROPOSER + CANCELLER` roles on Timelock; **`address(0)` holds `EXECUTOR_ROLE` (open execution test)**. Lifecycle: full propose → vote → queue → execute path against the token (grants `MINTER_ROLE` via Timelock). Negative paths: cannot execute before voting period ends; cannot execute before Timelock min delay elapses. Phase B.5/B.6: post-transfer + renounce, deployer can no longer grant roles directly. |
+| `test-foundry/Governance.t.sol` | *verified in §14* | Shared with §4.7. `test_executorIsTimelock` confirms Governor's `_executor()` returns the Timelock address (i.e., proposals execute as the Timelock, which is what holds the operational roles). |
+
+No invariants exclusive to this contract — Timelock semantics are exercised by §4.7 Governor flows.
+
+---
+
+### §4.7 GuardiansGovernor
+
+**File:** `contracts/governance/GuardiansGovernor.sol` (151 lines)
+**Deployed:** Phase B.2 (see §3.3) — once per network, never re-deployed.
+**Mutability:** Module composition over OZ Governor v5.1.0. The contract defines **zero custom state** and **zero custom logic**; every public function is either a constructor pass-through, a parameter-getter, or a required Solidity override that delegates to `super`.
+
+#### 4.7.1 Purpose
+
+DAO proposal entry point. Reads voting power from GuardiansToken's `ERC20Votes` extension (§4.1.2) and queues passed proposals through the Timelock (§4.6). The composition pins four governance parameters — `votingDelay`, `votingPeriod`, `proposalThreshold`, `quorum` — at deploy via OZ `GovernorSettings` and `GovernorVotesQuorumFraction`. Changing any of them post-deploy requires a self-proposal that itself clears the 48 h Timelock window.
+
+#### 4.7.2 Inheritance (C3 linearization)
+
+Direct parents (declaration order, `GuardiansGovernor.sol:28–35`):
+
+```
+contract GuardiansGovernor is
+    Governor,
+    GovernorSettings,
+    GovernorCountingSimple,
+    GovernorVotes,
+    GovernorVotesQuorumFraction,
+    GovernorTimelockControl
+```
+
+**Why direct-parent listing is sufficient (with one caveat).** This is the only contract in the protocol with **non-trivial C3 linearization** — six OZ modules contributing overlapping `votingDelay`, `votingPeriod`, `proposalThreshold`, `quorum`, `state`, `_executor`, `_queueOperations`, `_executeOperations`, `_cancel`, and `proposalNeedsQueuing`. Solidity v0.8.24 requires explicit `override(Base1, Base2)` on each conflicting function — these are the nine override blocks at L52–L150. Each is a `super.X(...)` delegation; the C3 order matters because `super` resolves to "the next parent in linearization order that defines `X`."
+
+**OZ v5.1.0-specific notes:**
+
+- Modules used: `Governor` (core), `GovernorSettings` (parameterised delay/period/threshold), `GovernorCountingSimple` (for/against/abstain), `GovernorVotes` (vote source = ERC20Votes), `GovernorVotesQuorumFraction` (percentage quorum), `GovernorTimelockControl` (Timelock integration). This is the canonical OZ "DAO with Timelock" template.
+- `Governor.clock()` follows `IVotes.clock()` on the token. `GuardiansToken` uses the OZ v5 default (`block.number` — see §4.1.2), so all four parameters (`votingDelay`, `votingPeriod`, snapshot at proposal-start, queue-ready timestamp) are denominated in **blocks**, not seconds. The implementation comment at L25–26 is the authoritative note. See §4.7.10 for the BSC block-time assumption.
+- Required overrides: 9 in total. Each is a trivial `super.X(...)` pass-through.
+
+#### 4.7.3 Constructor
+
+```solidity
+constructor(IVotes _token, TimelockController _timelock)
+    Governor("GuardiansGovernor")
+    GovernorSettings(28_800, 201_600, 100_000 * 10 ** 18)
+    GovernorVotes(_token)
+    GovernorVotesQuorumFraction(4)
+    GovernorTimelockControl(_timelock)
+{}
+```
+
+**Body is empty.** All initialisation happens in the parent constructors:
+
+| Parent constructor | Argument(s) | Effect |
+|---|---|---|
+| `Governor("GuardiansGovernor")` | `name = "GuardiansGovernor"` | EIP-712 domain separator for vote signatures uses this name. Auditor: confirm the off-chain UI signs against the same string. |
+| `GovernorSettings(28_800, 201_600, 100_000 * 10**18)` | `votingDelay = 28,800` blocks, `votingPeriod = 201,600` blocks, `proposalThreshold = 100,000e18` | See §4.7.10 for the BSC-3s-block conversion. |
+| `GovernorVotes(_token)` | The deployed GuardiansToken address (cast to `IVotes`) | Pins the vote source. Cannot be changed without redeploying. |
+| `GovernorVotesQuorumFraction(4)` | `numerator = 4`, denominator defaults to 100 → 4% | Quorum = 4% of total `getPastTotalSupply()` at proposal-start block. |
+| `GovernorTimelockControl(_timelock)` | The deployed Timelock address | Pins execution surface. Cannot be changed without redeploying. |
+
+**`_token` and `_timelock` are not stored as `immutable` by the child** — they are read into private storage by their respective parent modules (`GovernorVotes._token`, `GovernorTimelockControl._timelock`). Both have public getters: `token()` and `timelock()`.
+
+#### 4.7.4 Roles
+
+**The Governor contract is roleless.** OZ `Governor` does not inherit `AccessControl` — there are no `bytes32 public constant *_ROLE` declarations. Authorisation for `propose()` is by *delegated voting power* (must hold ≥ `proposalThreshold` at the proposal-snapshot block); authorisation for `castVote*` is by *any token holder with non-zero past votes*; authorisation for `queue()` and `execute()` are gated by the proposal state machine plus the Timelock's own role checks.
+
+| Capability | Authorisation | Notes |
+|---|---|---|
+| `propose(...)` | `getVotes(proposer, t) ≥ proposalThreshold` at `t = clock() - 1` | 100k GOTT delegated to the proposer at the block immediately before the propose tx. |
+| `castVote*(...)` | any holder with `getPastVotes(voter, snapshot) > 0` | Snapshot = proposal-start block. Vote weight equals delegated balance at snapshot. |
+| `queue(...)` | proposal state == `Succeeded` (passed + quorum reached) + Governor holds `PROPOSER_ROLE` on Timelock | The Governor's role on the Timelock — granted at Phase B.3 — is the load-bearing wiring. |
+| `execute(...)` | proposal state == `Queued` + Timelock delay elapsed + Timelock `EXECUTOR_ROLE` open (held by `address(0)`) | The 48 h delay is enforced by the Timelock, not the Governor. |
+| `cancel(...)` | proposer cancels before voting starts (`Pending` state) OR Governor holds `CANCELLER_ROLE` on Timelock for queued proposals | Granted at Phase B.4. |
+
+#### 4.7.5 Modifiers
+
+The child defines none. Inherited modifier surface from OZ `Governor` is internal-only (`onlyGovernance` for self-calls during execution); no `external` function uses an external modifier directly. State checks are inline.
+
+#### 4.7.6 External / Public Functions
+
+Vast majority inherited from `Governor` and modules. The child contract redeclares **nine overrides** that delegate to `super`:
+
+| Function | Override target(s) | Body | Purpose |
+|---|---|---|---|
+| `votingDelay()` | `Governor`, `GovernorSettings` | `return super.votingDelay();` | Returns the configured 28,800. |
+| `votingPeriod()` | `Governor`, `GovernorSettings` | `return super.votingPeriod();` | Returns the configured 201,600. |
+| `proposalThreshold()` | `Governor`, `GovernorSettings` | `return super.proposalThreshold();` | Returns the configured 100,000e18. |
+| `quorum(uint256 timepoint)` | `Governor`, `GovernorVotesQuorumFraction` | `return super.quorum(timepoint);` | Returns `4 * pastTotalSupply / 100`. |
+| `state(uint256 proposalId)` | `Governor`, `GovernorTimelockControl` | `return super.state(proposalId);` | Adds `Queued` / `Executed` states from Timelock module. |
+| `proposalNeedsQueuing(uint256)` | `Governor`, `GovernorTimelockControl` | `return super.proposalNeedsQueuing(proposalId);` | Always `true` for this Governor (every passed proposal queues). |
+| `_queueOperations(...)` | `Governor`, `GovernorTimelockControl` | `return super._queueOperations(...);` | Routes to Timelock `scheduleBatch`. Internal. |
+| `_executeOperations(...)` | `Governor`, `GovernorTimelockControl` | `super._executeOperations(...);` | Routes to Timelock `executeBatch`. Internal. |
+| `_cancel(...)` | `Governor`, `GovernorTimelockControl` | `return super._cancel(...);` | Cancels queued op in Timelock. Internal. |
+| `_executor()` | `Governor`, `GovernorTimelockControl` | `return super._executor();` | Returns the Timelock address — proposals execute as the Timelock. **Load-bearing for role wiring.** |
+
+**Inherited public surface (high-level summary):**
+
+- **Proposal lifecycle:** `propose`, `queue` (two overloads), `execute` (two overloads), `cancel` (two overloads).
+- **Voting:** `castVote`, `castVoteWithReason`, `castVoteWithReasonAndParams`, `castVoteBySig`, `castVoteWithReasonAndParamsBySig`.
+- **Reads:** `name`, `version`, `clock`, `CLOCK_MODE`, `COUNTING_MODE`, `hasVoted`, `proposalVotes`, `proposalDeadline`, `proposalSnapshot`, `proposalEta`, `proposalProposer`, `getVotes`, `getVotesWithParams`, `hashProposal`, `state`, `proposalThreshold`, `votingDelay`, `votingPeriod`, `quorum`, `token`, `timelock`, `quorumNumerator`, `quorumDenominator`.
+- **EIP-712:** `eip712Domain` (for vote signature off-chain reconstruction).
+
+**Internal helpers worth audit attention:** none. All internal helpers are inherited OZ logic; the only child overrides are the nine `super` pass-throughs above.
+
+#### 4.7.7 Public State Variables (auto-getters)
+
+The child contract defines none. Storage layout is fully managed by the OZ parent modules.
+
+#### 4.7.8 Custom Errors
+
+The child contract defines none. Inherited from OZ Governor modules: `GovernorAlreadyCastVote`, `GovernorAlreadyQueuedProposal`, `GovernorDisabledDeposit`, `GovernorInsufficientProposerVotes`, `GovernorInvalidProposalLength`, `GovernorInvalidQuorumFraction`, `GovernorInvalidSignature`, `GovernorInvalidVoteType`, `GovernorNonexistentProposal`, `GovernorNotQueuedProposal`, `GovernorOnlyExecutor`, `GovernorOnlyProposer`, `GovernorQueueNotImplemented`, `GovernorRestrictedProposer`, `GovernorUnexpectedProposalState`, plus AccessControl errors transitively reachable when interacting with the Timelock.
+
+#### 4.7.9 Events
+
+The child contract defines none. Inherited: `ProposalCreated`, `ProposalCanceled`, `ProposalExecuted`, `ProposalQueued`, `VoteCast`, `VoteCastWithParams`, `QuorumNumeratorUpdated`, `TimelockChange`, `VotingDelaySet`, `VotingPeriodSet`, `ProposalThresholdSet`.
+
+#### 4.7.10 Immutables & Constants
+
+**No `immutable` or `constant` declarations in the child.** The four governance parameters are stored in `GovernorSettings`'s internal mutable slots (changeable only via self-proposal):
+
+| Parameter | Value at deploy | OZ storage slot | Mutable via |
+|---|---|---|---|
+| `votingDelay` | 28,800 blocks | `GovernorSettings._votingDelay` | `setVotingDelay(uint48)` — `onlyGovernance` |
+| `votingPeriod` | 201,600 blocks | `GovernorSettings._votingPeriod` | `setVotingPeriod(uint32)` — `onlyGovernance` |
+| `proposalThreshold` | 100,000 × 10¹⁸ | `GovernorSettings._proposalThreshold` | `setProposalThreshold(uint256)` — `onlyGovernance` |
+| `quorumNumerator` | 4 | `GovernorVotesQuorumFraction._quorumNumeratorHistory` (Checkpoints) | `updateQuorumNumerator(uint256)` — `onlyGovernance` |
+
+`onlyGovernance` is the OZ self-call gate: each setter can only be invoked by the Governor itself via a proposal that the Timelock executes — i.e., changing a governance parameter is a normal DAO proposal subject to the full 48 h delay.
+
+**BSC block-time assumption note.** All four time-domain parameters (`votingDelay`, `votingPeriod`) are denominated in *blocks* because the token's clock is `block.number`. The deploy constants (28,800 ≈ 1 day, 201,600 ≈ 7 days) assume **BSC's nominal 3-second block time**. BSC block time has been observed to fluctuate (≈2.5–4 s during congestion events on historical chain stats), so the effective wall-clock voting window varies by approximately the same proportion. This is an explicit acceptance — the alternative (timestamp-based clock via ERC-6372) would require GuardiansToken to override its clock mode, and the BSC fluctuation is bounded enough that a 7-day window can shift by hours but not days. Auditor may flag this as an Info-level note for the §10 design acceptances.
+
+#### 4.7.11 Receive / Fallback
+
+OZ `Governor` defines `receive() external payable virtual` that reverts unless the call is `_executor()` (i.e., the Timelock during a proposal that returns BNB). The child does not override. Effect: random BNB sends to the Governor revert; only the Timelock can route BNB through it as part of a proposal flow.
+
+#### 4.7.12 Slither Suppressions
+
+**Total directives on this contract: 0.** The child has no logic and adds no Slither-flagged patterns. The OZ Governor module composition has been independently audited.
+
+#### 4.7.13 Test Coverage Reference
+
+| Test file | Test count | Notable coverage |
+|---|---|---|
+| `test/Governance.test.js` | *verified in §14* | Settings parity check: `votingDelay == 28800`, `votingPeriod == 201600`, `proposalThreshold == 100k * 1e18`, quorum numerator = 4. Wiring: Governor's `token()` and `timelock()` return the deployed addresses. **Proposal threshold:** rejects proposer with delegated GOTT below threshold; accepts at threshold. **Full lifecycle:** propose → wait `votingDelay` → vote → wait `votingPeriod` → queue → wait Timelock min delay → execute (grants `MINTER_ROLE` on the token as the canonical end-to-end DAO action). **State gates:** cannot vote in `Pending`; cannot execute in `Active`; cannot execute before Timelock min delay. **Quorum:** 4% reflects total supply at snapshot; defeats proposals below quorum. **Cancel:** proposer can cancel in `Pending`. |
+| `test-foundry/Governance.t.sol` | *verified in §14* | Fuzz: `testFuzz_quorumIsExact4PercentOfPastSupply` (asserts `quorum() == 4 * pastSupply / 100` across a wide mint range), `testFuzz_proposeRevertsBelowThreshold`, `testFuzz_proposeAcceptsAtOrAboveThreshold`. Targeted: `test_governorSettings`, `test_executorIsTimelock` (asserts `_executor()` returns Timelock — load-bearing for role wiring). |
+
+**Coverage gap to flag for the auditor.** No test exercises a **parameter-change proposal** end-to-end (e.g., a proposal that calls `setVotingPeriod` or `updateQuorumNumerator` on the Governor itself, queued through the Timelock, executed, and the new value read back). The mechanism is OZ-canonical and well-audited, but a one-shot smoke test of the self-governance path would strengthen the audit story. Not blocking — flag in §14.
 
 ---
 
