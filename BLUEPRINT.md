@@ -1,8 +1,10 @@
 # GOTT Protocol — Full Blueprint
 
-**Version:** 0.1.0
-**Last Updated:** April 2026
-**Status:** Planning / Pre-Development
+**Version:** 0.2.0
+**Last Updated:** 2026-05-12
+**Status:** Phase 1–4 Implemented; Pre-Audit (Phase 4 Audit Prep)
+
+> **Drift note:** This blueprint was originally written at the pre-development stage (v0.1.0, April 2026). As of v0.2.0, §5 has been re-synced to match the contracts actually deployed in PRs #3–#10 on `main`, §10 reflects shipped state, and §13 cross-references the §10 Acknowledged Design Decisions catalog in `docs/INTERNAL_REVIEW.md`. For the authoritative audit-firm view of the protocol, read `docs/INTERNAL_REVIEW.md` — this blueprint is the marketing / vision document.
 
 ---
 
@@ -183,7 +185,7 @@ GuardiansToken.sol (ERC20 + Votes + Pausable + AccessControl)
 
 ## 5. Smart Contract Design
 
-### 5.1 GuardiansToken.sol (Existing, Modified)
+### 5.1 GuardiansToken.sol (Shipped — PR #3)
 
 Modifikasi dari contract existing:
 - **Remove:** Anti-whale max wallet (biar distribution mining natural)
@@ -193,100 +195,123 @@ Modifikasi dari contract existing:
 
 ```solidity
 bytes32 public constant CLEANUP_MINER_ROLE = keccak256("CLEANUP_MINER_ROLE");
-uint256 public constant MAX_MINT_PER_DAY = 1_400_000 ether; // 1.4M/hari, fits Epoch 1 mining (~1.389M/day avg)
-mapping(uint256 => uint256) public mintedPerDay; // key = block.timestamp / 1 days
+uint256 public constant MAX_SUPPLY      = 1_000_000_000 ether;  // 1B hard cap
+uint256 public constant MAX_MINT_PER_DAY = 1_400_000 ether;     // 1.4M/hari (~1.389M/day avg for Epoch 1)
+mapping(uint256 => uint256) public mintedPerDay;                // key = block.timestamp / 1 days
+
+error MaxSupplyExceeded();
+error DailyCapExceeded();
 
 function mintReward(address to, uint256 amount)
     external onlyRole(CLEANUP_MINER_ROLE)
 {
+    if (totalSupply() + amount > MAX_SUPPLY) revert MaxSupplyExceeded();
     uint256 day = block.timestamp / 1 days;
-    require(mintedPerDay[day] + amount <= MAX_MINT_PER_DAY, "Daily cap");
-    require(totalSupply() + amount <= MAX_SUPPLY, "Max supply");
+    if (mintedPerDay[day] + amount > MAX_MINT_PER_DAY) revert DailyCapExceeded();
     mintedPerDay[day] += amount;
     _mint(to, amount);
 }
 ```
 
-### 5.2 GarbageCollector.sol
+**Implementation drift vs. original spec:** Switched to OZ v5.1.0 custom errors (no `require` strings) per Slither / gas hygiene. See `docs/INTERNAL_REVIEW.md` §4.1 for full audit-grade write-up.
+
+### 5.2 GarbageCollector.sol (Shipped — PR #7, with EIP-712 added in PR #10)
 
 Main contract untuk cleanup operation.
 
-**Core Functions:**
+**Core Function (Phase 4 — EIP-712 signed authorization):**
 ```solidity
 function cleanupBatch(
     address[] calldata tokens,
     uint256[] calldata amounts,
     uint256 minBnbOut,
-    bytes calldata metadata
-) external nonReentrant whenNotPaused returns (uint256 bnbReceived);
+    uint256 cleanupValueUSD,    // off-chain-computed, 1e18-scaled
+    uint256 nonce,              // per-user, monotonic
+    uint256 deadline,           // unix timestamp
+    bytes   calldata signature  // EIP-712 signed by oracleSigner
+) external nonReentrant whenNotPaused returns (uint256 totalBnbReceived);
 
-function cleanupNFT(
-    address[] calldata nftContracts,
-    uint256[] calldata tokenIds
-) external nonReentrant returns (uint256 rewardAmount);
-
-function estimateCleanup(
-    address user,
-    address[] calldata tokens
-) external view returns (
-    uint256 estimatedBnb,
-    uint256 estimatedGott,
-    uint8[] memory tokenStatus
-);
+function sendScamToLandfill(
+    address[] calldata tokens,
+    uint256[] calldata amounts
+) external nonReentrant whenNotPaused;
 ```
 
-**Security Features:**
-- Reentrancy guard
-- Pausable (emergency stop)
-- Slippage protection
-- Whitelisted DEX routers only
-- Max tokens per cleanup (anti-gas attack)
+**Why EIP-712 was added in Phase 4:** original v0.1 spec used a `bytes metadata` parameter for `cleanupValueUSD`, which would have let users self-report reward inputs and game the system. The Phase 4 redesign moves `cleanupValueUSD` into a backend-signed `CleanupAuthorization` struct with per-user nonce + deadline. See `docs/INTERNAL_REVIEW.md` §4.5 for the full security argument.
 
-### 5.3 CleanupMining.sol
+**Security Features:**
+- Reentrancy guard (`nonReentrant` on every state-mutating external function)
+- Pausable (emergency stop on both cleanup paths)
+- Per-batch slippage protection (`minBnbOut` user-supplied)
+- **Immutable** router + WBNB + ScamRegistry (set at deploy, cannot be re-pointed)
+- Max tokens per cleanup (`maxTokensPerCleanup ≤ MAX_TOKENS_HARD_CAP = 50`, gas/DoS bound)
+- EIP-712 signed `cleanupValueUSD` (single-use nonce + deadline)
+- Swap-fail fallback → forward token to LandfillVault (see AD-08 in INTERNAL_REVIEW.md §10)
+
+**Out of scope v0.3 (deferred from original spec):**
+- `cleanupNFT(...)` — NFT cleanup not implemented; depends on `NFTGraveyard.sol` (§5.6 below, also deferred).
+- `estimateCleanup(...)` view function — replaced by `hashCleanupAuth(...)` helper for off-chain digest reconstruction; full estimate logic lives in the backend signer service.
+
+### 5.3 CleanupMining.sol (Shipped — PR #6)
 
 Handle reward distribution logic.
 
-**Emission Schedule:**
-```
-Total Mining Pool: 500,000,000 GOTT (50% of supply)
-Emission Period: 24 months (4 epochs of 6 months)
+**Emission model — halving multiplier (not a fixed pool):**
 
-Epoch 1 (Month 1-6):  250,000,000 GOTT (50% of mining pool)
-Epoch 2 (Month 7-12): 125,000,000 GOTT (25%)
-Epoch 3 (Month 13-18): 62,500,000 GOTT (12.5%)
-Epoch 4 (Month 19-24): 62,500,000 GOTT (12.5%)
-```
+The shipped contract does **not** carve out a fixed 500M "mining pool" with absolute per-epoch caps. Instead, emission is governed by:
 
-**Reward Formula:**
+1. A **halving multiplier per epoch** (4 epochs of 180 days each, then zero):
+
+| Epoch | Window (days from `LAUNCH_TIMESTAMP`) | `epochMultiplier` |
+|---|---|---|
+| 0 | 0–180 | `1.0e18` |
+| 1 | 180–360 | `0.5e18` |
+| 2 | 360–540 | `0.25e18` |
+| 3 | 540–720 | `0.125e18` |
+| 4+ | 720+ | `0` (mining ends) |
+
+2. A **per-day mint cap** enforced *downstream* on the GOTT token (§5.1): `MAX_MINT_PER_DAY = 1.4M GOTT`.
+
+Combined with the daily cap, total emission through the cleanup-mining path is bounded to **slightly under `MAX_SUPPLY` = 1B GOTT** across the full 720-day window. See `docs/INTERNAL_REVIEW.md` §4.4.10 for the full sanity check and Appendix C for the derivation.
+
+**Reward Formula (shipped):**
 ```
 reward = baseRate × cleanupValueUSD × tierMultiplier × epochMultiplier
 ```
 
-Where:
-- `baseRate`: 100 GOTT per $1 cleanup value (adjustable via DAO)
-- `cleanupValueUSD`: USD value of tokens cleaned
-- `tierMultiplier`:
-  - First cleanup: 2x bonus
-  - Cleanup > $100: 1.5x
-  - Cleanup > $1000: 1.25x
-  - Default: 1x
-- `epochMultiplier`: 1.0 → 0.5 → 0.25 → 0.125 (halving per epoch)
+Implemented as divide-before-multiply (see `docs/INTERNAL_REVIEW.md` §4.4.12 / AD-05 for the overflow rationale).
 
-### 5.4 LandfillVault.sol
+Where:
+- `baseRate`: `100 ether` GOTT per $1 USD (mutable via `setBaseRate(uint256)` under `ADMIN_ROLE`, capped at `MAX_BASE_RATE = 1000 ether`)
+- `cleanupValueUSD`: USD value of tokens cleaned (1e18-scaled, signed by oracle — see §5.2)
+- `tierMultiplier`:
+  - First cleanup: `2.0e18` (2× bonus)
+  - `cleanupValueUSD ≥ tierSilver` ($1000 default): `1.25e18`
+  - `cleanupValueUSD ≥ tierBronze` ($100 default): `1.5e18`
+  - Default: `1.0e18`
+  - **Order matters:** silver check happens *first* — at value ≥ $1000 the user gets `1.25×`, not `1.5×`. This is an intentional anti-whale gradient (see `docs/INTERNAL_REVIEW.md` §4.4.6).
+- `epochMultiplier`: halving table above
+
+Thresholds `tierBronze` and `tierSilver` are mutable via `setTierThresholds(uint256, uint256)` under `ADMIN_ROLE` (= Timelock post-B.5).
+
+### 5.4 LandfillVault.sol (Shipped — PR #5)
 
 Treasury holder untuk token sampah.
 
 **Features:**
-- Receive tokens dari `GarbageCollector`
-- View balance per token
-- Execute vote outcomes (burn/sell/send to graveyard)
-- Only callable by Timelock (DAO governance)
+- Receive tokens dari `GarbageCollector` (explicit push via `sendScamToLandfill`, implicit push via swap-fail fallback in `cleanupBatch`)
+- View balance per token (`balanceOf(token)`)
+- DAO actions (`burnToken`, `transferToken`) gated by `DAO_ROLE` — held by Timelock post-Phase-B.5
+- **`EMERGENCY_ROLE`** can `emergencyWithdraw(token, to)` **even while paused** — circuit breaker for a compromised vault. Currently held by Timelock; original intent was a separate multisig (see AD-04 in INTERNAL_REVIEW.md §10)
+- Pausable (`PAUSER_ROLE`)
 
-### 5.5 ScamRegistry.sol
+See `docs/INTERNAL_REVIEW.md` §4.3 for full role / behaviour walkthrough.
+
+### 5.5 ScamRegistry.sol (Shipped — PR #4)
 
 On-chain scam token database (hybrid).
 
-**Structure:**
+**Structure (shipped — bundled into a single `TokenInfo` struct for storage efficiency):**
 ```solidity
 enum TokenStatus {
     Unknown,
@@ -298,25 +323,36 @@ enum TokenStatus {
     Honeypot     // can buy, cant sell
 }
 
-mapping(address => TokenStatus) public tokenStatus;
-mapping(address => uint256) public lastUpdated;
-mapping(address => address) public reportedBy;
+struct TokenInfo {
+    TokenStatus status;       // current classification
+    uint64      lastUpdated;  // unix timestamp of last status change
+    uint64      reportCount;  // monotonic counter of successful writes (per I-05)
+    address     reportedBy;   // most recent writer
+}
+
+mapping(address => TokenInfo) public tokenInfo;
 ```
 
+The original spec used three separate mappings; the shipped contract bundles them into one struct to halve cold-SLOAD cost on read paths (`GarbageCollector.cleanupBatch` reads `isScamOrDrainer` per token per batch — gas matters at `MAX_TOKENS_HARD_CAP = 50`).
+
 **Update Mechanism:**
-- Backend oracle (initially)
-- DAO vote (medium-term)
-- Reputation-based community reporting (long-term)
+- Backend oracle (initial — `ORACLE_ROLE` held by off-chain key)
+- DAO vote (medium-term — `ORACLE_ROLE` could be granted to a Governor proposal target)
+- Reputation-based community reporting (long-term — not yet designed)
 
-### 5.6 NFTGraveyard.sol
+See `docs/INTERNAL_REVIEW.md` §4.2 for full role / behaviour walkthrough.
 
-Curated marketplace untuk dead NFT.
+### 5.6 NFTGraveyard.sol — **deferred to v0.3+ (out of current scope)**
 
-**Concept:**
-- Wrap dead NFT jadi "Tombstone NFT"
-- Metadata: original collection, rug date, notable holders, story
-- Sell sebagai "blockchain archaeology" collectibles
-- Revenue split: 50% treasury, 30% burn GOTT, 20% curator reward
+Originally specced as a curated marketplace untuk dead NFT (wrap → "Tombstone NFT" → sell as blockchain-archaeology collectible, revenue split 50% treasury / 30% burn / 20% curator).
+
+**Status:** **Not implemented.** Removed from the Phase 1–5 scope because:
+
+1. The ERC-20 cleanup engine has higher user-impact priority and a cleaner trust boundary (no per-NFT provenance / metadata curation problem).
+2. Tombstone NFT economics depend on an active secondary market that does not yet exist around dead NFTs on BSC.
+3. The legal positioning for selling "rug NFTs as collectibles" needs separate Indonesian regulatory review (§14).
+
+May be revisited as a v0.3+ feature once the core cleanup-engine has steady-state usage. The blueprint slot is retained as a signal of long-term intent; **no contract code is shipped or planned for v0.2.x**.
 
 ---
 
@@ -583,57 +619,62 @@ LandfillVault Actions
 
 ## 10. Roadmap
 
-### 10.1 Phase 0 — Blueprint (Current, April 2026)
+### 10.1 Phase 0 — Blueprint (April 2026) — ✅ Complete
 - [x] Market research & competitive analysis
 - [x] Architecture design
 - [x] Tokenomics modeling
-- [ ] Legal consultation (Indonesia regulatory)
+- [ ] Legal consultation (Indonesia regulatory) — ongoing
 - [ ] Community Discord/Telegram setup
 - [ ] Brand identity (logo, colors, voice)
 
-### 10.2 Phase 1 — Foundation (Month 1-2)
-- [ ] Modify existing `GuardiansToken.sol` sesuai spec baru
-- [ ] Develop `GarbageCollector.sol` MVP
-- [ ] Develop `CleanupMining.sol` reward logic
-- [ ] Setup Hardhat + Foundry testing environment
-- [ ] Unit test coverage > 90%
-- [ ] Fuzz test untuk critical paths (Foundry)
-- [ ] Slither static analysis (target: 0 findings)
+### 10.2 Phase 1 — Foundation (April–May 2026) — ✅ Complete
+- [x] `GuardiansToken.sol` shipped (PR #3, 40+11 tests, Slither 0)
+- [x] `ScamRegistry.sol` shipped (PR #4, 29+9 tests, Slither 0)
+- [x] `LandfillVault.sol` shipped (PR #5, 27+10 tests, Slither 0)
+- [x] `CleanupMining.sol` shipped (PR #6, 38+10 tests, Slither 0)
+- [x] `GarbageCollector.sol` v1 shipped (PR #7, 27+6 tests, Slither 0)
+- [x] Hardhat + Foundry testing environment configured
+- [x] Slither static analysis (achieved: **0 findings across all contracts**)
+- [x] Foundry fuzz (500 runs) + invariant tests (100 runs × 50 depth) — all contracts
 
-### 10.3 Phase 2 — Detection Engine (Month 2-3)
-- [ ] Backend service untuk scam detection
-- [ ] Integrate GoPlus + TokenSniffer APIs
-- [ ] ML classifier training (historical scam tokens dataset)
-- [ ] Honeypot simulator (fork-based testing)
-- [ ] `ScamRegistry.sol` on-chain database
-- [ ] Public API endpoint (rate-limited)
+### 10.3 Phase 2 — Governance + Hardening (May 2026) — ✅ Complete
+- [x] `GuardiansTimelockController` + `GuardiansGovernor` shipped (PR #8, 15+5 tests)
+- [x] Admin role transfer script + tests (PR #9, 13 tests)
+- [x] EIP-712 signed `cleanupValueUSD` authorization (PR #10, 32+9 tests) — Phase 4 audit-blocker closed
+- [ ] **Backend service untuk scam detection — pending (off-chain Phase)**
+- [ ] **Integrate GoPlus + TokenSniffer APIs — pending**
+- [ ] **ML classifier training — pending**
+- [ ] **Honeypot simulator (fork-based testing) — pending**
+- [ ] **Public API endpoint (rate-limited) — pending**
 
-### 10.4 Phase 3 — Frontend (Month 3-4)
+### 10.4 Phase 3 — Frontend (Month 3-4) — Not started
 - [ ] Web app (Next.js + TypeScript + Wagmi)
 - [ ] Wallet connect (RainbowKit / Web3Modal)
 - [ ] Scan & review UI (Indonesian primary)
-- [ ] Cleanup flow with slippage display
+- [ ] Cleanup flow with slippage display + EIP-712 signature handshake to backend signer
 - [ ] Rewards tracking dashboard
 - [ ] Mobile responsive (PWA)
 - [ ] Dark/light mode
 
-### 10.5 Phase 4 — Audit & Testnet (Month 4-5)
-- [ ] Internal security review checklist
-- [ ] Audit vendor selection (SolidProof / Hacken / QuillAudits)
+### 10.5 Phase 4 — Audit & Testnet (May–June 2026) — 🔄 IN PROGRESS
+- [x] Internal security review draft — **`docs/INTERNAL_REVIEW.md` v0.2 published (1781 lines, §4 Contract Inventory complete across 7 contracts; §5/§7-§16 pending)**
+- [x] AD-01..AD-11 design-acceptance catalog drafted (see INTERNAL_REVIEW.md §10 forward-refs)
+- [ ] Master testnet deploy script consolidation (`scripts/deployFull.js`)
+- [ ] Audit vendor selection (SolidProof / Hacken / QuillAudits — quotes pending)
 - [ ] Submit for audit ($3-15k budget)
 - [ ] Fix audit findings
 - [ ] Deploy BSC Testnet
 - [ ] Public beta (100 invited wallets)
 - [ ] Bug bounty launch (Immunefi, $10k pool)
 
-### 10.6 Phase 5 — Mainnet Launch (Month 5-6)
+### 10.6 Phase 5 — Mainnet Launch (target Month 5-6) — Not started
 - [ ] BSC Mainnet deployment
 - [ ] Contract verification on BscScan
 - [ ] Initial liquidity add ($50k-$100k)
 - [ ] LP lock 12 months (Team.Finance / Mudra)
 - [ ] Marketing campaign activation
 - [ ] Listing CoinGecko + CMC submission
-- [ ] DAO governance activation
+- [ ] DAO governance activation (Phase B.6 — deployer renounces DEFAULT_ADMIN_ROLE on Timelock)
 
 ### 10.7 Phase 6 — Growth (Month 6-12)
 - [ ] First DAO vote (dramatic PR stunt: burn 100 scam token)
@@ -822,13 +863,22 @@ Distribusi awal (75M initial circulating):
 
 ### 13.1 Technical Risks
 
-| Risk | Severity | Probability | Mitigation |
-|------|----------|-------------|------------|
-| Smart contract exploit | 🔴 Critical | Medium | Audit + bug bounty + progressive rollout |
-| Scam classifier false positive | 🟡 Medium | High | Community reporting + override mechanism |
-| Scam classifier false negative | 🟡 Medium | Medium | Multiple external API cross-reference |
-| Gas spike during cleanup | 🟢 Low | Medium | Off-peak execution recommendation |
-| Oracle manipulation (price feed) | 🟡 Medium | Low | Multiple oracle sources, TWAP |
+> **Cross-reference:** As of Draft 0.2 of `docs/INTERNAL_REVIEW.md`, the technical risk surface has been formalised as the **AD-01..AD-11 Acknowledged Design Decisions catalog** (INTERNAL_REVIEW.md §10). Each AD entry carries a proposed severity, a §4 origin reference, and an acceptance rationale. The table below now mirrors that catalog rather than listing generic risks — for the audit-firm view, the INTERNAL_REVIEW.md catalog is authoritative.
+
+| Risk | AD ref | Severity (proposed) | Mitigation |
+|------|--------|---------------------|------------|
+| `oracleSigner` private-key compromise → unlimited reward mint | AD-07 | 🟡 Med | Per-day cap (`MAX_MINT_PER_DAY = 1.4M`); Timelock rotates key via `setOracleSigner`. Bug-bounty key-comp scenario added to scope. |
+| Swap-fail fallback: user loses token to landfill without BNB refund | AD-08 | 🟡 Low–Med | Batch-level `minBnbOut` aborts whole batch if mostly-failed; documented in UI, frontend should surface fallback events. |
+| Per-token slippage = 0; sandwich-attack defense relies on user-supplied `minBnbOut` | AD-09 | 🟢 Info | Frontend computes `minBnbOut` from realistic per-block routing quote; future hardening = per-token slippage cap. |
+| Timelock open executor (`executors = [address(0)]`) — anyone executes after delay | AD-10 | 🟢 Info | By design — removes liveness dependence on a single relayer. 48 h queue review window is the load-bearing protection. |
+| BSC block-time variance (2.5–4 s) shifts effective Governor voting window | AD-11 | 🟢 Info | Voting periods denominated in blocks (`votingDelay = 28,800 blocks`); the wall-clock shift is hours, not days. |
+| `ScamRegistry` pause response (48 h Timelock, no EMERGENCY backup; zero funds) | AD-02 | 🟢 Low | Worst-case = 48 h DoS on cleanup-gate for mis-flagged tokens; users hold tokens until Timelock executes. |
+| `LandfillVault` FoT amount-vs-event drift (no balanceBefore/After diff) | AD-03 | 🟢 Low | Balance-of-reality design; emitted-amount may overstate actual for fee-on-transfer tokens. Coverage gap: no FoT-token fuzz fixtures (§4.3.13). |
+| `LandfillVault` role separation collapse at deploy (all 4 roles → Timelock) | AD-04 | 🟢 Low | Original intent was separate multisig for `EMERGENCY_ROLE`; current single-Timelock design is documented and acceptable for v0.2. |
+| `CleanupMining` divide-before-multiply pattern | AD-05 | 🟢 Info | Intentional overflow protection — derivation in INTERNAL_REVIEW.md Appendix C. Precision argued (all inputs 1e18-scaled). |
+| `GuardiansToken` UTC mint bucket timestamp granularity | AD-06 | 🟢 Info | Bucket key = `block.timestamp / 1 days`; UTC boundary not validator-controllable beyond ~3 s. |
+| Scam classifier false positive / negative (off-chain pipeline) | — (off-chain) | 🟡 Medium | Community reporting + override mechanism; multiple external API cross-reference (GoPlus, TokenSniffer). |
+| Gas spike during cleanup | — (operational) | 🟢 Low | Off-peak execution recommendation; `MAX_TOKENS_HARD_CAP = 50` bounds per-tx gas. |
 
 ### 13.2 Market Risks
 
