@@ -2,7 +2,7 @@
 
 > **Status:** Pre-audit internal review. Intended for an external audit firm (SolidProof / Hacken tier) with no prior project context.
 > **Commit under review:** `8a80b35` (main).
-> **Document version:** Draft 0.6 — §4 + §5 + §6 + §9 + §10 complete; test counts reconciled (193 Hardhat + 54 Foundry); §7, §8, §11, §12, §13, §14, §15, §16, §1 pending.
+> **Document version:** Draft 0.7 — §4 + §5 + §6 + §7 + §9 + §10 complete; test counts reconciled (193 Hardhat + 54 Foundry); §8, §11, §12, §13, §14, §15, §16, §1 pending.
 
 ---
 
@@ -16,7 +16,7 @@
 
 This section tracks the internal drafting state. It is **not** part of the deliverable to the audit firm; it will be deleted in the Draft 1.0 cut.
 
-### Done in this revision (Draft 0.6)
+### Done in this revision (Draft 0.7)
 
 | Section | Status | Notes |
 |---|---|---|
@@ -31,6 +31,7 @@ This section tracks the internal drafting state. It is **not** part of the deliv
 | §4.7 GuardiansGovernor | ✅ Complete | OZ module composition (151 LoC, 9 required overrides). AD-11 (BSC block-time variance) forward-ref'd to §10. |
 | §5 Role Matrix | ✅ Complete | Consolidated table across 7 contracts + 4 post-table notes (contract-bound roles, hot keys, pause asymmetry, roleless Governor). |
 | §6 System Invariants (registry + body proof-sketches) | ✅ Complete | Registry I-01..I-17 plus §6.1-§6.6 body. Each invariant covered with 6-element format (Statement / Why it matters / Enforcement / Verification / Assumptions / Failure mode blocked). Coverage gaps honestly flagged for I-15 (no dedicated `invariant_*`), I-16 (OZ Timelock property, no Foundry invariant), I-17 (no end-to-end self-amendment test). Cross-refs: AD-03 (I-08 FoT limit), AD-06 (I-02 UTC bucket), AD-07 (I-02 / I-15 bound). |
+| §7 External Call Graph | ✅ Complete | 10 sub-sections (§7.1-§7.10). §7.1 reading guide (6 call classes), §7.2 ASCII high-level graphs (3: cleanup engine, landfill path, governance), §7.3 11-step `cleanupBatch` table, §7.4 `sendScamToLandfill` path, §7.5 mining-reward atomicity caveat (EVM revert propagation through DEX swaps in the same tx), §7.6 swap-fail fallback (try/catch scope explicit), §7.7 governance/Timelock pipeline, §7.8 admin/role transfer bootstrap calls, §7.9 20-row consolidated external-call inventory, §7.10 14-row revert/atomicity summary. Single "NO (caught)" row in §7.10 = router swap revert via try/catch; every other failure reverts the whole tx. |
 | §9 Trust Assumptions & Oracle Surface | ✅ Complete | §9.1 Trust Model Overview (four trust classes), §9.2 Hot-Key Surface Summary (5-row table), §9.3 oracleSigner deep-dive, §9.4 ORACLE_ROLE deep-dive, §9.5 PancakeRouter / WBNB boundary, §9.6 User-Supplied ERC-20 boundary, §9.7 Governance / Timelock boundary, §9.8 Bootstrap Trust Window, §9.9 Consolidated Trust Assumption Matrix. Operational vs on-chain controls explicitly labelled throughout. |
 | §10 Acknowledged Design Decisions (body) | ✅ Complete | AD-02..AD-11 drafted using the 9-element format (Title / Severity / Affected / Decision / Rationale / Risk / Mitigation / Residual / Cross-ref). AD-01 reserved for the highest-priority external-audit finding. Severities: AD-02..AD-04 Low, AD-05/AD-06/AD-09/AD-10/AD-11 Info, AD-07 Med, AD-08 Low–Med. |
 | Test count reconciliation | ✅ Done | **193 Hardhat + 54 Foundry = 247 total, 100% pass.** Run output: 0 failed, 0 skipped. Earlier 167+35 scan was undercount; PR-claimed 193+54 verified. Per-file: GuardiansToken 40/11, ScamRegistry 29/9, LandfillVault 27/10, CleanupMining 38/10, GarbageCollector 32/9, Governance 15/5, RoleTransfer 12/—. |
@@ -39,15 +40,14 @@ This section tracks the internal drafting state. It is **not** part of the deliv
 
 | Order | Section | Estimated complexity | Blocker / dependency |
 |---|---|---|---|
-| 1 | §7 External Call Graph | Low–Medium — diagrams already partially in §3.2; this section is the formal version with arrow direction + role gates | None. |
-| 2 | §11 Gas & DoS Surface | Medium — covers `MAX_TOKENS_HARD_CAP = 50`, the per-batch loops in `cleanupBatch`, registry write fan-out | Benefits from real-token fork tests (§4.5.13 gap). |
-| 3 | §8 Storage Layout & Upgrade Story | Low — protocol is non-upgradeable; section states this and walks each contract's storage layout for completeness | None. |
-| 4 | §13 Emergency Response | Medium — playbook for AD-07 (oracle key compromise), AD-02 (ORACLE_ROLE compromise), router incident, Timelock-stuck proposal, paused-vault recovery | §9 + §10 already drafted. |
-| 5 | §14 Test Coverage Summary | Low — write up the verified 193+54 numbers + coverage-gap rollup from §4.X.13 cells | Test counts already verified. |
-| 6 | §15 Out of Scope | Low — short list (off-chain signer infra, ORACLE_ROLE keeper service, frontend) | None. |
-| 7 | §16 Appendices (Glossary, EIP-712, Reward Formula derivation, Build & Reproducibility, Repo refs) | Medium | Reward-formula derivation pulls from §4.4.12 inline rationale + AD-05. |
-| 8 | §12 Deployment Reference | Low — short stub + link to `docs/DEPLOYMENT.md` | **Blocker: `docs/DEPLOYMENT.md` does not yet exist.** Create alongside §12 drafting. |
-| 9 | §1 Document Purpose | Low | Write **last**, after every other section is final. |
+| 1 | §11 Gas & DoS Surface | Medium — covers `MAX_TOKENS_HARD_CAP = 50`, the per-batch loops in `cleanupBatch`, registry write fan-out | Benefits from real-token fork tests (§4.5.13 gap). |
+| 2 | §8 Storage Layout & Upgrade Story | Low — protocol is non-upgradeable; section states this and walks each contract's storage layout for completeness | None. |
+| 3 | §13 Emergency Response | Medium — playbook for AD-07 (oracle key compromise), AD-02 (ORACLE_ROLE compromise), router incident, Timelock-stuck proposal, paused-vault recovery | §9 + §10 already drafted. |
+| 4 | §14 Test Coverage Summary | Low — write up the verified 193+54 numbers + coverage-gap rollup from §4.X.13 cells | Test counts already verified. |
+| 5 | §15 Out of Scope | Low — short list (off-chain signer infra, ORACLE_ROLE keeper service, frontend) | None. |
+| 6 | §16 Appendices (Glossary, EIP-712, Reward Formula derivation, Build & Reproducibility, Repo refs) | Medium | Reward-formula derivation pulls from §4.4.12 inline rationale + AD-05. |
+| 7 | §12 Deployment Reference | Low — short stub + link to `docs/DEPLOYMENT.md` | **Blocker: `docs/DEPLOYMENT.md` does not yet exist.** Create alongside §12 drafting. |
+| 8 | §1 Document Purpose | Low | Write **last**, after every other section is final. |
 
 ### Design acceptances catalog (§10 body now drafted — all severities user-ack'd)
 
@@ -2107,6 +2107,322 @@ Authorization on the Governor is by *delegated voting weight* (for `propose`) an
 - Source for the matrix rows: §4.1.4 (GuardiansToken), §4.2.4 (ScamRegistry), §4.3.4 (LandfillVault), §4.4.4 (CleanupMining), §4.5.4 (GarbageCollector), §4.6.4 (Timelock), §4.7.4 (Governor — roleless).
 - Source for the transfer script: `scripts/transferAdminRoles.js`. Idempotent; tested in `test/RoleTransfer.test.js` (12 tests).
 - Source for Phase A/B/C lifecycle: §3.3.
+
+---
+
+## §7 External Call Graph
+
+### §7.1 Scope and Reading Guide
+
+This section maps **external calls** in the protocol — every call that crosses a contract boundary, plus every native BNB movement. Internal helper calls (`_setStatus`, `_verifyAndConsumeAuth`, `_swapTokenToBNB`) are listed only where they encapsulate a security-relevant transition. Pure / view reads are excluded unless they gate a write path (e.g., `ScamRegistry.isScamOrDrainer` is included because it gates `cleanupBatch`).
+
+Calls are categorised into six classes, used as a colour-key in the diagrams below:
+
+| Class | Description | Example |
+|---|---|---|
+| **1. User-initiated** | An EOA calls a public function on a protocol contract. | `User → GarbageCollector.cleanupBatch(...)` |
+| **2. Protocol-internal** | One protocol contract calls another. | `GarbageCollector → CleanupMining.recordCleanup(...)` |
+| **3. Governance / admin** | The Timelock (post-B.5) calls an admin function on a protocol contract. | `Timelock → ScamRegistry.grantRole(ORACLE_ROLE, ...)` |
+| **4. External protocol** | A protocol contract calls an out-of-scope deployed contract. | `GarbageCollector → PancakeRouter.swapExactTokensForETH(...)` |
+| **5. Token transfer** | An ERC-20 transfer or approval call. | `GarbageCollector → IERC20(token).safeTransferFrom(user, gc, amount)` |
+| **6. Native BNB** | A native-value call (low-level `call{value:}`) or `receive()` invocation. | `GarbageCollector → msg.sender.call{value: totalBnbReceived}("")` |
+
+Every arrow in §7.2–§7.8 carries a category tag. The consolidated inventory in §7.9 is sortable by category.
+
+### §7.2 High-Level Call Graph
+
+**Cleanup engine (user-initiated path):**
+
+```
+                                              ┌────────────────────────┐
+                                              │ Off-chain oracleSigner │
+                                              │      (HSM EOA)         │
+                                              └───────────┬────────────┘
+                                                          │ EIP-712 sig
+                                                          │ (CleanupAuthorization)
+                                                          ▼
+   ┌────────┐  (1) cleanupBatch(...)     ┌──────────────────────────┐
+   │  User  │ ──────────────────────────▶│    GarbageCollector       │
+   │  EOA   │                            │  (cleanup orchestrator)   │
+   └────────┘                            └──────────┬───────────────┘
+       ▲                                            │
+       │                              (2) isScamOrDrainer (view, gates write)
+       │                                  ┌─────────▼─────────┐
+       │                                  │   ScamRegistry    │
+       │                                  └───────────────────┘
+       │                                            │
+       │                              (3) safeTransferFrom(user, gc, amt)
+       │                                  ┌─────────▼─────────┐
+       │                                  │ User ERC-20 token │
+       │                                  └─────────┬─────────┘
+       │                                            │
+       │                                  (4) forceApprove(router, amt)
+       │                                            ▼
+       │                                  ┌────────────────────────┐
+       │     (5b) BNB delta on success    │  PancakeRouter v2      │
+       │ ◀───────────────────────────     │  (immutable)            │
+       │     (via receive())              │  swapExactTokensForETH  │
+       │                                  └────────┬───────────────┘
+       │                                  success  │      revert (catch)
+       │                                           ▼      ▼
+       │                       BNB lands in GC    [GC]   (5c) safeTransfer
+       │                       via receive()              to landfillVault
+       │                                                  ┌──────────────────┐
+       │                                                  │  LandfillVault    │
+       │                                                  └──────────────────┘
+       │
+       │             (6) recordCleanup      ┌────────────────────┐
+       │ ──────────────────────────────────▶│   CleanupMining    │
+       │                                    │ (COLLECTOR_ROLE)   │
+       │                                    └─────────┬──────────┘
+       │                                              │
+       │                              (7) mintReward(user, reward)
+       │                                              ▼
+       │                                    ┌────────────────────┐
+       │                                    │  GuardiansToken    │
+       │                                    │  (MAX_MINT_PER_DAY │
+       │                                    │   + MAX_SUPPLY)    │
+       │                                    └────────────────────┘
+       │
+       │ (8) msg.sender.call{value: totalBnbReceived}("")  ← CEI tail
+       │ ◀───────────────────────────────────────────────
+```
+
+**Explicit landfill path (no oracle, no reward):**
+
+```
+   ┌────────┐   sendScamToLandfill(tokens, amounts)   ┌────────────────────┐
+   │  User  │ ───────────────────────────────────────▶│  GarbageCollector  │
+   │  EOA   │                                         └──────────┬─────────┘
+   └────────┘                                                    │ per token:
+                                                                 │ safeTransferFrom
+                                                                 │   user → landfillVault
+                                                                 ▼
+                                                       ┌────────────────────┐
+                                                       │   LandfillVault    │
+                                                       └────────────────────┘
+                                              emit ScamTokenSent(user, token, amount)
+```
+
+**Governance pipeline (post-Phase-B.5):**
+
+```
+┌────────────────┐  delegate  ┌────────────────┐  propose / vote   ┌──────────────────────┐
+│ Token holder   │───────────▶│ GuardiansToken │◀──────────────────│  GuardiansGovernor    │
+│ (delegatee)    │            │ (ERC20Votes)   │                   │  (Settings + Counting │
+└────────────────┘            └────────────────┘                   │   + Votes + Quorum +  │
+                                                                   │   TimelockControl)    │
+                                                                   └──────────┬───────────┘
+                                                                              │ queue
+                                                                              ▼
+                                                                ┌──────────────────────────┐
+                                                                │ GuardiansTimelockController│
+                                                                │  _minDelay = 48h          │
+                                                                │  EXECUTOR = address(0)    │
+                                                                │  PROPOSER = Governor      │
+                                                                └────────────┬─────────────┘
+                                                          execute (anyone, after 48h)
+                                                                              │
+                              ┌───────────────────────────────────────────────┴───────────────────────────────┐
+                              ▼                       ▼                      ▼                ▼                ▼
+                  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+                  │ GuardiansToken   │  │  ScamRegistry    │  │  LandfillVault   │ │ CleanupMining   │ │ GarbageCollector │
+                  │ admin functions  │  │ admin functions  │  │ admin functions  │ │ admin functions │ │ admin functions  │
+                  └──────────────────┘  └──────────────────┘  └──────────────────┘ └─────────────────┘ └─────────────────┘
+```
+
+### §7.3 User Cleanup Path: `cleanupBatch`
+
+The numbered steps below trace a successful `cleanupBatch(...)` call from user submission through BNB payout. Steps marked **(internal)** do not cross a contract boundary but encapsulate a security-relevant transition.
+
+| Step | Caller | Callee | Function | Gate / modifier | Asset movement | Failure behavior | Cross-ref |
+|---|---|---|---|---|---|---|---|
+| 1 | User EOA | GarbageCollector | `cleanupBatch(tokens, amounts, minBnbOut, cleanupValueUSD, nonce, deadline, sig)` | `nonReentrant + whenNotPaused` (no role gate — auth is sig-based) | none yet | length / bound revert (`InvalidLength`, `TooManyTokens`, `BelowMinThreshold`) | §4.5.5 |
+| 2 (internal) | GarbageCollector | (self) | `_verifyAndConsumeAuth(...)` | inline — verifies deadline, nonce, EIP-712 sig | none | `SignatureExpired` / `InvalidNonce` / `InvalidSignature` revert before any swap | §4.5.6, AD-07, I-15 |
+| 3 | GarbageCollector | ScamRegistry | `isScamOrDrainer(token)` (view, gates write) | none (view) | none | If `true` for any token → `TokenIsScam(token)` revert before any swap | §4.5.5, I-04 |
+| 4 | GarbageCollector | IERC20(token) | `safeTransferFrom(user, gc, amount)` | none — relies on user's prior `approve(gc, ≥amount)` | tokens: user → GarbageCollector | SafeERC20 revert (insufficient allowance / balance / non-standard token); **not** in try/catch — reverts whole tx | §4.5.6 |
+| 5 | GarbageCollector | IERC20(token) | `forceApprove(router, amount)` | none | sets allowance (no asset movement) | SafeERC20 revert; not in try/catch | §4.5.6 |
+| 6a | GarbageCollector | PancakeRouter | `swapExactTokensForETH(amount, 0, [token, WBNB], gc, block.timestamp + deadlineBuffer)` | none (router is immutable, trusted) | tokens: GC → router pool; **BNB: pool → GC via internal WBNB unwrap** | **try/catch**: revert → fallback path (step 6b); success → step 6c | §4.5.6, AD-09 |
+| 6b | GarbageCollector | IERC20(token) | `forceApprove(router, 0)` then `safeTransfer(landfillVault, amount)` (catch branch) | none | tokens: GC → LandfillVault; allowance cleared | If `safeTransfer` itself reverts (extremely uncommon — token already in GC), reverts whole tx | §4.5.6, AD-08 |
+| 6c (internal) | GarbageCollector | (self) | `address(this).balance − bnbBefore` delta measurement | inline | none — measures accumulated BNB | n/a | §4.5.6 |
+| 7 (internal) | GarbageCollector | (self) | `totalBnbReceived < minBnbOut` check | inline | none — gate before reward bookkeeping and payout | `InsufficientBnbOut(received, minOut)` revert; **all prior token movements unwind via EVM revert** | §4.5.5, AD-09 |
+| 8 | GarbageCollector | CleanupMining | `recordCleanup(user, cleanupValueUSD, tokens.length)` | callee-side: `onlyRole(COLLECTOR_ROLE) + whenNotPaused + nonReentrant` | none directly; triggers step 9 | revert (paused, role revoked, downstream mint cap hit) → reverts whole tx | §4.4, §7.5 |
+| 9 | CleanupMining | GuardiansToken | `mintReward(user, reward)` | callee-side: `onlyRole(CLEANUP_MINER_ROLE)` + I-01 + I-02 checks | GOTT: minted to user | `MaxSupplyExceeded` / `DailyMintCapExceeded` revert → propagates up through `recordCleanup` → reverts whole `cleanupBatch` | §4.1, §7.5, I-01, I-02 |
+| 10 | GarbageCollector | — | `emit CleanupExecuted(...)` | inline | none | event emission has no failure mode (pre-payout — see §7.10 row "BNB payout fail") | §4.5.9 |
+| 11 | GarbageCollector | msg.sender (User EOA) | `msg.sender.call{value: totalBnbReceived}("")` | gated only by `nonReentrant`; CEI tail (last operation) | BNB: GC → user | If `call` returns `false` → `BnbTransferFailed` revert; **the `CleanupExecuted` event emitted in step 10 is also reverted** | §4.5.6 |
+
+**Atomicity summary for this path.** Every step from 4 onward either succeeds or causes the whole transaction to revert (with one exception: step 6 router revert is caught and rerouted to landfill — see §7.6). State changes from earlier steps are unwound by EVM revert semantics, including token transfers, approvals, and the mining-side `recordCleanup` state writes. The BNB payout is the *last* state-affecting operation; a failure in that final step still reverts everything before it.
+
+### §7.4 Explicit Landfill Path: `sendScamToLandfill`
+
+A separate user-initiated path that does **not** require an oracle signature, does **not** check the scam registry, and does **not** issue any reward.
+
+| Step | Caller | Callee | Function | Gate / modifier | Asset movement | Failure behavior |
+|---|---|---|---|---|---|---|
+| 1 | User EOA | GarbageCollector | `sendScamToLandfill(tokens, amounts)` | `nonReentrant + whenNotPaused` | none yet | `InvalidLength` revert on empty / mismatched arrays |
+| 2 (per token) | GarbageCollector | IERC20(token) | `safeTransferFrom(user, landfillVault, amount)` | none — relies on user's prior `approve(gc, ≥amount)` | tokens: user → LandfillVault (direct, not via GC custody) | SafeERC20 revert → reverts whole tx (no try/catch on this path); earlier per-token transfers in the same call are unwound |
+| 3 (per token) | GarbageCollector | — | `emit ScamTokenSent(user, token, amount)` | inline | none | n/a |
+
+**Notes.**
+- The function name promises "scam tokens" but the contract does **not** consult `ScamRegistry.isScamOrDrainer(...)` — the user opts in to the dump explicitly. This is intentional (see §4.5.6). A token that fails to swap via `cleanupBatch` (e.g., no Pancake liquidity) but is not registered as scam can still be dumped via this path.
+- No `cleanupValueUSD`, no nonce consumption, no `CleanupAuthorization`. The signed-authorization machinery (§7.3 steps 1–2) does not apply here.
+- No reward path. The user accepts the asset loss as the price of vault custody.
+- Atomicity: if any per-token `safeTransferFrom` in the batch reverts, the whole call reverts and earlier per-token transfers (already executed in this same call) unwind via EVM revert. No partial success.
+
+### §7.5 Mining Reward Path
+
+The reward bookkeeping bridge spans two contracts and one external call back to the token. It is invoked exclusively from `GarbageCollector.cleanupBatch` step 8 (§7.3) — there is no other on-chain entry point to `recordCleanup`.
+
+| Step | Caller | Callee | Function | Gate / modifier | Asset movement | Failure behavior |
+|---|---|---|---|---|---|---|
+| 1 | GarbageCollector | CleanupMining | `recordCleanup(user, cleanupValueUSD, tokens.length)` | `onlyRole(COLLECTOR_ROLE) + whenNotPaused + nonReentrant` | none directly | role / paused / param-validation revert → propagates up to `cleanupBatch` and reverts whole tx |
+| 2 (internal) | CleanupMining | (self) | reward calc + state writes (`totalRewardsEarned`, `cleanupCountPerEpoch`, `totalCleanupsExecuted`) | inline | none — pure storage writes | n/a |
+| 3 | CleanupMining | GuardiansToken | `mintReward(user, reward)` | callee-side: `onlyRole(CLEANUP_MINER_ROLE)` + `mintedPerDay[day] + amount > MAX_MINT_PER_DAY` (I-02) + `totalSupply() + amount > MAX_SUPPLY` (I-01) | GOTT: minted to user | `MaxSupplyExceeded` / `DailyMintCapExceeded` revert → propagates back through `recordCleanup` → back through `cleanupBatch` → reverts whole tx |
+
+**Atomicity caveat (important).** If `mintReward` reverts in step 3, the revert propagates as follows:
+- `CleanupMining.recordCleanup` reverts — its state writes from step 2 are unwound.
+- The revert propagates into `GarbageCollector.cleanupBatch` at step 8 of §7.3.
+- All state writes in `cleanupBatch` from steps 4–7 (§7.3) are also unwound by the EVM.
+- **External calls in the same transaction also unwind their state effects.** This is critical: even though `PancakeRouter.swapExactTokensForETH` at step 6 (§7.3) executed and produced a BNB delta, the router's internal state changes are part of the same transaction and are reverted. The user's token does not end up swapped; the user's wallet state is restored to pre-`cleanupBatch`. No partial swap residue.
+
+This is a general EVM property, not a protocol-specific guarantee — but worth stating explicitly because the asymmetry is sometimes misread. In particular, the swap-fail fallback path (§7.6) is **not** an exception to this; the fallback runs inside `try/catch` *before* `minBnbOut` and reward bookkeeping, so if the later steps revert, the fallback's `safeTransfer` to landfill also reverts.
+
+**Order of state-effects.** Inside `recordCleanup`, the state writes precede the `mintReward` external call (CEI ordering — see §4.4.5). The reentrancy guard plus the trusted-immutable identity of `gott` close the only re-entry path, but the CEI ordering is the load-bearing protection.
+
+### §7.6 Swap Failure / Fallback Path
+
+Step 6 of §7.3 wraps the router call in a `try / catch`. The handler covers **only** the router call — not the preceding `safeTransferFrom` (step 4) or the following `minBnbOut` check (step 7).
+
+```solidity
+try router.swapExactTokensForETH(
+    amount,
+    0,                          // per-token slippage = 0 (AD-09)
+    path,                       // [token, WBNB]
+    address(this),
+    block.timestamp + swapDeadlineBuffer
+) returns (uint256[] memory) {
+    // success — BNB landed in GC via receive()
+} catch {
+    // router reverted — fallback path
+    t.forceApprove(address(router), 0);              // clear stale allowance
+    t.safeTransfer(landfillVault, amount);           // forward token to vault
+    emit SwapFallbackToLandfill(from, token, amount);
+}
+```
+
+**What the `catch` covers.**
+- Any revert inside `router.swapExactTokensForETH`: insufficient liquidity, deadline expiry, price-impact triggers, malicious router logic. The router itself is `immutable` and trusted to be canonical PancakeRouter v2 (§9.5), but its *outcome* is not trusted — even a canonical router can revert for legitimate reasons (e.g., no pair).
+
+**What the `catch` does NOT cover.**
+- Step 4 `safeTransferFrom` from user to GC — runs *before* the try/catch.
+- Step 5 `forceApprove(router, amount)` — also before the try/catch.
+- Step 7 `minBnbOut` aggregate check — runs *after* the try/catch on the batch level.
+- Step 8 `recordCleanup` and step 9 `mintReward` — after the swap loop completes.
+- Step 11 native BNB payout — final step, after reward bookkeeping.
+
+A revert in any of those non-caught steps propagates and reverts the whole transaction, *including* any per-token `safeTransfer` to landfill that the catch already executed earlier in the same batch.
+
+**Outcome of a single-token catch-and-continue.** If only one token in the batch's swap reverts, the batch continues with the remaining tokens. The user's pre-existing `cleanupValueUSD` (signed by the oracle for the whole batch) still applies — they receive reward for the full batch's notional value, but BNB only for the tokens that actually swapped. AD-08 (Low–Med) is the accepted UX trade-off. The batch-level `minBnbOut` is the user's escape hatch: if too many tokens fall through to the vault, aggregate BNB < `minBnbOut` and the whole batch reverts in step 7 (§7.3), unwinding even the catch's landfill transfers.
+
+### §7.7 Governance / Timelock Call Path
+
+After Phase B.5, every admin function on every protocol contract is reachable only through the Timelock. The end-to-end flow:
+
+| Step | Caller | Callee | Function | Gate / modifier | Asset movement | Failure behavior |
+|---|---|---|---|---|---|---|
+| 1 | Token holder | GuardiansToken | `delegate(delegatee)` | inherited from `ERC20Votes` | none — assigns voting weight to `delegatee` | revert on `delegatee == 0` per OZ spec |
+| 2 | Proposer EOA (≥ 100k GOTT delegated) | GuardiansGovernor | `propose(targets, values, calldatas, description)` | inherited `proposalThreshold` check (`getVotes(proposer) >= proposalThreshold`) | none | `GovernorInsufficientProposerVotes` revert |
+| 3 | Token holders | GuardiansGovernor | `castVote(...)` / `castVoteWithReason(...)` / `castVoteBySig(...)` | snapshot vote weight; per-voter once | none | `GovernorAlreadyCastVote` revert if double-vote |
+| 4 (state transition) | — | Governor | `state(proposalId)` returns `Succeeded` after voting period + quorum + majority | view | none | n/a |
+| 5 | Anyone (gas payer) | GuardiansGovernor | `queue(targets, values, calldatas, descriptionHash)` | `state == Succeeded`; Governor must hold `PROPOSER_ROLE` on Timelock | none | `GovernorUnexpectedProposalState` revert |
+| 6 (internal) | Governor | Timelock | `scheduleBatch(...)` | callee-side: `onlyRole(PROPOSER_ROLE)` | none — schedules op | `TimelockInsufficientDelay` if proposed delay < `_minDelay` |
+| 7 (delay elapses) | — | Timelock | `_minDelay = 48h` enforced | view | none | n/a |
+| 8 | Anyone (gas payer) | GuardiansGovernor | `execute(targets, values, calldatas, descriptionHash)` | `state == Queued` + Timelock delay elapsed; Governor delegates to Timelock | varies by proposal payload | proposal targets revert → whole `execute` reverts; proposal stays in `Queued` state, re-executable after fix |
+| 9 (internal) | Governor | Timelock | `executeBatch(...)` | callee-side: `onlyRoleOrOpenRole(EXECUTOR_ROLE)` — short-circuited because `EXECUTOR_ROLE` holder is `address(0)` (AD-10) | varies | target reverts propagate up |
+| 10 | Timelock | (target protocol contract) | admin function (e.g., `setOracleSigner`, `grantRole`, `pause`, `mint`, etc.) | callee-side role gate on the target (e.g., `onlyRole(ADMIN_ROLE)` — held by Timelock) | varies | target's own revert reasons |
+
+**Open executor caveat (AD-10).** Step 8/9 can be invoked by *any* address — not just the Governor, not just a designated relayer. The payload is fixed when the proposal was queued in step 5/6, so an arbitrary caller cannot inject new calldata; they can only trigger execution of the already-approved payload. This is the canonical OZ-recommended pattern.
+
+**Voting-window caveat (AD-11).** Step 3 voting window is `votingPeriod = 201,600 blocks`. At BSC's 2.5–4 s block time, the wall-clock window varies from ≈ 5.8 days to ≈ 9.3 days around the 7-day target. Off-chain governance UIs should display block-number deadlines, not wall-clock estimates.
+
+**Cross-references.** §4.7 (Governor module composition), §5 Role Matrix (which target functions Timelock can reach), §9.7 (governance trust boundary), I-16, I-17, AD-10, AD-11.
+
+### §7.8 Admin / Role Transfer Call Path (Bootstrap)
+
+Phases A and B are scripted from `scripts/deployFull.js` (when written — currently per-contract `scripts/deploy<Name>.js`) and `scripts/transferAdminRoles.js`. The on-chain calls during the cutover:
+
+| Step | Caller | Callee | Function | Effect |
+|---|---|---|---|---|
+| B.3 | Deployer EOA | Timelock | `grantRole(PROPOSER_ROLE, governor)` | Governor can `schedule` proposals |
+| B.4 | Deployer EOA | Timelock | `grantRole(CANCELLER_ROLE, governor)` | Governor can `cancel` queued ops |
+| B.5.a | Deployer EOA | GuardiansToken | `grantRole(DEFAULT_ADMIN_ROLE, timelock)` + `grantRole(MINTER_ROLE, timelock)` + `grantRole(PAUSER_ROLE, timelock)` | Timelock receives all token admin authority |
+| B.5.b | Deployer EOA | GuardiansToken | `revokeRole(MINTER_ROLE, deployer)` + `revokeRole(PAUSER_ROLE, deployer)` + `revokeRole(DEFAULT_ADMIN_ROLE, deployer)` | Deployer loses token authority |
+| B.5.c–f | Deployer EOA | ScamRegistry / LandfillVault / CleanupMining / GarbageCollector | analogous `grantRole(...)` for each admin / pauser / DAO / emergency role to Timelock, then `revokeRole(...)` from deployer | Each contract's admin transferred |
+| B.6 | Deployer EOA | Timelock | `renounceRole(DEFAULT_ADMIN_ROLE, deployer)` | **Final lock**: no EOA holds any admin authority anywhere |
+
+`scripts/transferAdminRoles.js` is idempotent (re-running partial state is safe) and tested in `test/RoleTransfer.test.js` (12 tests, see §5.4).
+
+**Roles intentionally NOT transferred at B.5:** `CLEANUP_MINER_ROLE` on GuardiansToken (held by CleanupMining contract) and `COLLECTOR_ROLE` on CleanupMining (held by GarbageCollector contract). See §5.3 note 1 for the rationale.
+
+**Cross-references.** §3.3 (Phase A/B/C lifecycle), §5 Role Matrix (steady-state holder column), §9.8 (Bootstrap Trust Window — the on-chain-unbounded risk during this ritual).
+
+### §7.9 External Call Inventory
+
+Consolidated table of every external call in the protocol. Filter by **Class** to focus on a category. **Gate** lists the modifier or pre-condition on the *caller* side; callee-side gates are noted in the **Notes** column where relevant.
+
+| # | Source (contract.function) | Callee.function | Class | Gate (caller) | Value/token movement | Revert handling | Notes / cross-ref |
+|---|---|---|---|---|---|---|---|
+| 1 | `GarbageCollector.cleanupBatch` | `ScamRegistry.isScamOrDrainer(token)` | view | `nonReentrant + whenNotPaused` (caller) | none | revert (`TokenIsScam`) propagates → whole tx reverts | per-token loop; gas bounded by `MAX_TOKENS_HARD_CAP = 50`. §4.5.5 |
+| 2 | `GarbageCollector._swapTokenToBNB` | `IERC20(token).safeTransferFrom(user, gc, amount)` | ERC-20 transfer | `nonReentrant + whenNotPaused` | tokens: user → GC | **not** in try/catch; revert → whole tx reverts | §4.5.6 |
+| 3 | `GarbageCollector._swapTokenToBNB` | `IERC20(token).forceApprove(router, amount)` | ERC-20 approve | `nonReentrant + whenNotPaused` | sets allowance | revert → whole tx reverts | OZ `forceApprove` resets to 0 first when needed |
+| 4 | `GarbageCollector._swapTokenToBNB` | `PancakeRouter.swapExactTokensForETH(...)` | DEX swap | `nonReentrant + whenNotPaused` | tokens: GC → pool; BNB: pool → GC (via receive) | **in `try/catch`**: revert → step 5/6 fallback; no whole-tx revert from router | §4.5.6, AD-08, AD-09, §9.5 |
+| 5 | `GarbageCollector._swapTokenToBNB` (catch branch) | `IERC20(token).forceApprove(router, 0)` | ERC-20 approve | catch branch — runs only on router revert | clears allowance | If revert here → whole tx reverts | §4.5.6 |
+| 6 | `GarbageCollector._swapTokenToBNB` (catch branch) | `IERC20(token).safeTransfer(landfillVault, amount)` | ERC-20 transfer | catch branch — runs only on router revert | tokens: GC → LandfillVault | If revert here → whole tx reverts | §4.5.6, AD-08 |
+| 7 | `GarbageCollector.cleanupBatch` | `CleanupMining.recordCleanup(user, cleanupValueUSD, tokens.length)` | protocol-internal | `nonReentrant + whenNotPaused`; callee-side: `onlyRole(COLLECTOR_ROLE) + whenNotPaused + nonReentrant` | triggers step 8 (mint) | revert → whole tx reverts | §4.4, §7.5 |
+| 8 | `CleanupMining.recordCleanup` | `GuardiansToken.mintReward(user, reward)` | protocol-internal | callee-side: `onlyRole(CLEANUP_MINER_ROLE)` + I-01 + I-02 checks | GOTT: minted to user | revert → propagates up through `recordCleanup` → up through `cleanupBatch` → whole tx reverts | §4.1, §7.5, I-01, I-02 |
+| 9 | `GarbageCollector.cleanupBatch` | `msg.sender.call{value: totalBnbReceived}("")` | native BNB | `nonReentrant + whenNotPaused`; **CEI tail** | BNB: GC → user | `false` return → `BnbTransferFailed` revert → whole tx reverts | §4.5.6 |
+| 10 | `GarbageCollector.sendScamToLandfill` | `IERC20(token).safeTransferFrom(user, landfillVault, amount)` | ERC-20 transfer | `nonReentrant + whenNotPaused` | tokens: user → LandfillVault | **not** in try/catch; revert → whole tx reverts | §4.5.6, §7.4 |
+| 11 | `LandfillVault.burnToken` | `IERC20(token).safeTransfer(0xdEaD, amount)` | ERC-20 transfer | `onlyRole(DAO_ROLE) + whenNotPaused + nonReentrant` | tokens: vault → `0xdEaD` | revert → whole tx reverts | §4.3, AD-03 caveat for FoT |
+| 12 | `LandfillVault.transferToken` | `IERC20(token).safeTransfer(to, amount)` | ERC-20 transfer | `onlyRole(DAO_ROLE) + whenNotPaused + nonReentrant` | tokens: vault → `to` | revert → whole tx reverts | §4.3 |
+| 13 | `LandfillVault.emergencyWithdraw` | `IERC20(token).safeTransfer(to, balance)` | ERC-20 transfer | `onlyRole(EMERGENCY_ROLE) + nonReentrant` (**bypasses pause**) | tokens: vault → `to` (full balance) | revert → whole tx reverts | §4.3, AD-04 |
+| 14 | `GarbageCollector.withdrawStuckBNB` | `to.call{value: balance}("")` | native BNB | `onlyRole(ADMIN_ROLE) + nonReentrant` | BNB: GC → `to` | `false` return → `BnbTransferFailed` revert | §4.5.6, AD-10 caveat |
+| 15 | PancakeRouter | `GarbageCollector.receive()` | native BNB (callback) | none — `receive() external payable {}` accepts unconditionally | BNB: router → GC | `receive` cannot revert (empty body) | §4.5.11 |
+| 16 | (any caller via OZ flow) | `GuardiansToken._update` (ERC20Votes hook) | view-effect-style internal | inherited from OZ | none | n/a | included for completeness — Votes accounting on transfer |
+| 17 | Anyone (post-delay) | `GuardiansTimelockController.executeBatch(...)` | governance execute | `onlyRoleOrOpenRole(EXECUTOR_ROLE)` — open executor | varies by proposal | per-target revert → whole `executeBatch` reverts; proposal stays Queued | §4.6.6, §7.7, AD-10 |
+| 18 | Timelock | (any target.adminFn) | governance / admin | callee-side role gate on target | varies | callee revert → propagates up to `executeBatch` revert | §5 Role Matrix |
+| 19 | Governor | `Timelock.scheduleBatch(...)` | governance queue | callee-side: `onlyRole(PROPOSER_ROLE)` | none | revert → reverts `queue` call | §4.6.6, §7.7 |
+| 20 | Token holder | `GuardiansToken.delegate(delegatee)` | inherited OZ | none | none — voting weight assignment | revert on `delegatee == 0` per OZ | §4.1.6 |
+
+**Patterns to note.**
+- **Exactly one `try/catch` in the protocol** (rows 4–6). All other external calls propagate reverts straight up.
+- **Three native BNB outbound calls** (rows 9, 14, 15-callback). Two are low-level `call{value:}` (rows 9, 14); one is `receive()` (row 15). All are gated by `nonReentrant` on the caller side.
+- **No `delegatecall` anywhere** in the protocol contract surface. The only `delegate` is `ERC20Votes.delegate` (row 20), which is a vote-weight assignment, not an EVM `delegatecall`.
+
+### §7.10 Revert / Atomicity Summary
+
+| Scenario | Reverts whole tx? | User asset outcome | Event outcome | Notes |
+|---|---|---|---|---|
+| Invalid signature (`InvalidSignature`) | YES | tokens not moved | none | `_verifyAndConsumeAuth` reverts before any swap. §7.3 step 2 |
+| Expired deadline (`SignatureExpired`) | YES | tokens not moved | none | same |
+| Invalid nonce (`InvalidNonce`) | YES | tokens not moved | none | same |
+| Scam token in `cleanupBatch` (`TokenIsScam`) | YES | tokens not moved | none | scam pre-check loop reverts before any swap. §7.3 step 3 |
+| ERC-20 `safeTransferFrom` fail in `cleanupBatch` | YES | tokens not moved (per-token failure unwinds all prior per-token transfers in the same call) | none | not in try/catch — only the router call is wrapped. §7.6 |
+| PancakeRouter swap fail for one token | NO (caught) | token forwarded to `landfillVault`; user does **not** receive BNB for that token but reward is still computed on full batch `cleanupValueUSD` | `SwapFallbackToLandfill(user, token, amount)` emitted | try/catch wraps only the router call. §7.6, AD-08 |
+| Aggregate `minBnbOut` fail (`InsufficientBnbOut`) | YES | **all** tokens unwound by EVM revert — including any per-token fallback transfers to landfill that the catch branch already executed earlier in the same batch | none (all events reverted) | §7.3 step 7, AD-09 |
+| `recordCleanup` revert (paused, role revoked, mint cap downstream) | YES | all tokens unwound; no reward | none | propagates from CleanupMining → cleanupBatch. §7.5 |
+| `mintReward` daily-cap fail (`DailyMintCapExceeded`) | YES | all tokens unwound; no reward | none | propagates back through `recordCleanup`. I-02, §7.5 |
+| `mintReward` MAX_SUPPLY fail (`MaxSupplyExceeded`) | YES | all tokens unwound; no reward | none | propagates back through `recordCleanup`. I-01, §7.5 |
+| BNB payout fail (`BnbTransferFailed`) | YES | all tokens unwound; the `CleanupExecuted` event emitted just before payout is also reverted | none | step 11 is the CEI tail. §7.3 step 11 |
+| `sendScamToLandfill` `safeTransferFrom` fail | YES | tokens not moved (per-token failure unwinds prior per-token transfers in the same call) | none (any `ScamTokenSent` emitted earlier in the same call is reverted) | no try/catch on this path. §7.4 |
+| Governance proposal target call fail | YES (within `executeBatch`) | proposal stays in `Queued` state — re-executable after the underlying issue is fixed | the `executeBatch` call reverts; no `ProposalExecuted` event emitted | per OZ TimelockController atomicity. §7.7 step 8/9 |
+| `LandfillVault.burnToken` / `transferToken` / `emergencyWithdraw` ERC-20 transfer fail | YES | tokens not moved | none | callee-side `nonReentrant` + role gate already passed; revert is inside the transfer itself |
+
+**Reading the table.**
+- "YES" in column 2 means an EVM revert unwinds all state changes in the current transaction.
+- The single "NO (caught)" row is the router swap failure inside `_swapTokenToBNB`. **Every other failure mode in this section reverts the whole transaction.**
+- "User asset outcome" describes the user-visible end state *after* the transaction. For revert rows, "not moved" / "unwound" mean the user's wallet state is identical to before the call.
+
+**Cross-references.** §4.5 (GarbageCollector contract walkthrough), §6 (invariants enforced by these revert paths), §9 (trust assumptions on what the revert behaviour bounds), §10 AD-07 / AD-08 / AD-09 / AD-10 (design acceptances on the catch / atomicity trade-offs).
 
 ---
 
